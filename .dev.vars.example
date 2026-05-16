@@ -1,0 +1,17 @@
+# Ring War — Worker secrets.
+# Copy to .env locally; push to deployed worker with `ntn workers env push`.
+
+# Anthropic — claude-sonnet-4-6 for Order, Shadow, Throne. Console cap: $30.
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Notion internal-integration token. Required for non-tool capabilities
+# (webhooks). Create at https://www.notion.so/profile/integrations/internal
+# and grant access to the four Ring War databases below.
+NOTION_API_TOKEN=secret_...
+
+# Notion database IDs. Set up in Notion per doc 03. Use the *database* ID, not
+# a data-source ID — the worker resolves data sources at runtime.
+RING_STATE_DB_ID=
+VAULT_DB_ID=
+TURNS_DB_ID=
+PUBLIC_DB_ID=

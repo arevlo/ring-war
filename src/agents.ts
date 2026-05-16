@@ -165,7 +165,12 @@ async function callTeam(team: "order" | "shadow", state: RingState, recent: Turn
 		max_tokens: MAX_TOKENS,
 		system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
 		tools,
-		tool_choice: { type: "any" },
+		// `auto` lets Claude emit its one-sentence reasoning as a text block
+		// before the tool_use. With `any` (forced), Claude tends to skip the
+		// reasoning and the chat narration falls back to the "(no narration)"
+		// stub. The system prompt + user prompt both explicitly tell the model
+		// to call a tool, so `auto` is reliable in practice.
+		tool_choice: { type: "auto" },
 		messages: [{ role: "user", content: userText }],
 	});
 

@@ -4,7 +4,9 @@
 	"private": true,
 	"scripts": {
 		"build": "tsc",
-		"check": "tsc --noEmit"
+		"check": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"engines": {
 		"node": ">=22.0.0",
@@ -13,7 +15,8 @@
 	"devDependencies": {
 		"@types/node": "^22.9.0",
 		"tsx": "^4.20.6",
-		"typescript": "^5.8.0"
+		"typescript": "^5.8.0",
+		"vitest": "^2.1.4"
 	},
 	"dependencies": {
 		"@notionhq/workers": ">=0.0.0"

@@ -668,6 +668,65 @@
 		min-height: 1.5em;
 	}
 
+	/* Throne utterance — the centerpiece "what just happened" line under the eye.
+	   Mirrors the liquid-glass treatment of the cards. Updates on every new turn. */
+	.throne-utterance {
+		max-width: min(720px, 90vw);
+		margin: 14px auto 0;
+		text-align: center;
+		padding: 14px 22px 16px;
+		border-radius: 14px;
+		background:
+			linear-gradient(180deg,
+				color-mix(in oklab, var(--surface)   45%, transparent),
+				color-mix(in oklab, var(--surface-2) 38%, transparent));
+		backdrop-filter: blur(22px) saturate(1.25);
+		-webkit-backdrop-filter: blur(22px) saturate(1.25);
+		border: 1px solid color-mix(in oklab, var(--rule) 55%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255,255,255,0.10),
+			0 10px 30px rgba(0,0,0,0.30);
+		transition: opacity 320ms ease;
+	}
+	.throne-utterance .ut-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 10px;
+		letter-spacing: 0.32em;
+		text-transform: uppercase;
+		font-weight: 700;
+		color: var(--throne);
+		margin-bottom: 8px;
+	}
+	.throne-utterance .ut-label .ut-turn {
+		color: var(--ink-soft);
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-weight: 400;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: none;
+	}
+	.throne-utterance .ut-text {
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-size: clamp(15px, 1.6vw, 19px);
+		line-height: 1.45;
+		color: var(--ink);
+		margin: 0;
+	}
+	.throne-utterance[data-winner="order"]  .ut-label { color: var(--order); }
+	.throne-utterance[data-winner="shadow"] .ut-label { color: var(--shadow); }
+	.throne-utterance.flash {
+		animation: utFlash 540ms ease-out;
+	}
+	@keyframes utFlash {
+		0%   { transform: translateY(-3px); opacity: 0.4; }
+		60%  { transform: translateY(0);    opacity: 1; }
+		100% { transform: translateY(0);    opacity: 1; }
+	}
+
 	/* ===== Timeline ===== */
 	.feed-section {
 		margin-top: 28px;
@@ -1021,34 +1080,65 @@
 		margin-bottom: 8px;
 	}
 	.live-card .lc-head .lc-turn { color: var(--ink); font-weight: 600; }
-	.live-card .lc-line {
-		display: grid;
-		grid-template-columns: 16px 1fr;
+	.live-card .lc-moves {
+		display: flex;
+		flex-direction: column;
+		gap: 5px;
+	}
+	.live-card .lc-chip {
+		display: inline-flex;
+		align-items: center;
 		gap: 7px;
-		font-size: 12.5px;
-		line-height: 1.4;
-		padding: 3px 0;
+		padding: 5px 9px;
+		border-radius: 999px;
+		font-size: 11.5px;
+		letter-spacing: 0.04em;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		opacity: 0;
+		transform: translateX(8px);
+		background: color-mix(in oklab, var(--surface-2) 50%, transparent);
+		border: 1px solid color-mix(in oklab, var(--rule) 60%, transparent);
 	}
-	.live-card .lc-line .lc-dot {
-		width: 6px; height: 6px;
-		border-radius: 50%;
-		margin-top: 7px;
+	.live-card .lc-chip .dot {
+		width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px;
 	}
-	.live-card .lc-line.order  .lc-dot { background: var(--order); }
-	.live-card .lc-line.shadow .lc-dot { background: var(--shadow); }
-	.live-card .lc-line.order  { color: color-mix(in oklab, var(--order)  70%, var(--ink) 30%); }
-	.live-card .lc-line.shadow { color: color-mix(in oklab, var(--shadow) 70%, var(--ink) 30%); }
+	.live-card .lc-chip.order  { color: var(--order);  border-color: color-mix(in oklab, var(--order)  40%, var(--rule)); }
+	.live-card .lc-chip.order  .dot { background: var(--order); }
+	.live-card .lc-chip.shadow { color: var(--shadow); border-color: color-mix(in oklab, var(--shadow) 40%, var(--rule)); }
+	.live-card .lc-chip.shadow .dot { background: var(--shadow); }
 	.live-card .lc-verdict {
-		margin-top: 8px;
-		padding-top: 8px;
-		border-top: 1px dashed color-mix(in oklab, var(--rule) 60%, transparent);
-		font-family: "Fraunces", Georgia, serif;
-		font-style: italic;
-		font-size: 12.5px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 9px;
+		padding: 5px 10px;
+		border-radius: 999px;
+		font-size: 10.5px;
+		font-weight: 700;
+		letter-spacing: 0.20em;
+		text-transform: uppercase;
+		background: color-mix(in oklab, var(--throne) 22%, transparent);
+		border: 1px solid color-mix(in oklab, var(--throne) 45%, var(--rule));
 		color: var(--throne);
+		opacity: 0;
+		transform: translateX(8px);
 	}
-	.live-card .lc-verdict[data-winner="order"]  { color: color-mix(in oklab, var(--order)  60%, var(--ink) 40%); }
-	.live-card .lc-verdict[data-winner="shadow"] { color: color-mix(in oklab, var(--shadow) 60%, var(--ink) 40%); }
+	.live-card .lc-verdict[data-winner="order"]  { color: var(--order);  background: color-mix(in oklab, var(--order)  20%, transparent); border-color: color-mix(in oklab, var(--order)  50%, var(--rule)); }
+	.live-card .lc-verdict[data-winner="shadow"] { color: var(--shadow); background: color-mix(in oklab, var(--shadow) 20%, transparent); border-color: color-mix(in oklab, var(--shadow) 50%, var(--rule)); }
+
+	/* Staggered reveal — only on truly new turns (class is added by JS) */
+	.live-card.stream .lc-chip.order  { animation: liveChipIn 360ms cubic-bezier(0.34, 1.06, 0.64, 1)   60ms forwards; }
+	.live-card.stream .lc-chip.shadow { animation: liveChipIn 360ms cubic-bezier(0.34, 1.06, 0.64, 1)  720ms forwards; }
+	.live-card.stream .lc-verdict     { animation: liveChipIn 380ms cubic-bezier(0.34, 1.06, 0.64, 1) 1440ms forwards; }
+	/* Seeded cards (page load) skip the stagger */
+	.live-card:not(.stream) .lc-chip,
+	.live-card:not(.stream) .lc-verdict { opacity: 1; transform: none; }
+
+	@keyframes liveChipIn {
+		from { opacity: 0; transform: translateX(8px); }
+		to   { opacity: 1; transform: translateX(0); }
+	}
 
 	@keyframes liveSlideIn {
 		from { opacity: 0; transform: translateX(28px); }
@@ -1212,6 +1302,14 @@
 
 		<button class="tap-btn" id="summon" type="button">Tap to summon</button>
 		<p class="tap-hint" id="tap-hint">The Ring waits.</p>
+
+		<aside class="throne-utterance" id="throne-utterance" aria-live="polite">
+			<div class="ut-label">
+				<span>The Throne speaks</span>
+				<span class="ut-turn" id="ut-turn"></span>
+			</div>
+			<p class="ut-text" id="ut-text">The Ring waits.</p>
+		</aside>
 	</section>
 
 	<section class="feed-section" aria-label="Turn history">
@@ -1351,31 +1449,54 @@ let _highestTurnSeen = -1;        // -1 = never rendered; 0+ = highest turn # al
 let _firstRender = true;
 const LIVE_RAIL_MAX = 5;
 
-function pushLiveCard(t) {
+function pushLiveCard(t, stream) {
 	if (!els.liveList) return;
 	const winner = (t.throne && t.throne.winner) || "";
 	const winnerLabel = winner ? winner.toUpperCase() + " HOLDS" : "VERDICT";
 	const card = document.createElement("article");
-	card.className = "live-card";
+	card.className = "live-card" + (stream ? " stream" : "");
 	card.innerHTML = `
 		<div class="lc-head">
 			<span class="lc-turn">Turn ${t.turn ?? "?"}</span>
 			<span>${fmtTime(t.timestamp)}</span>
 		</div>
-		<div class="lc-line order">
-			<span class="lc-dot"></span>
-			<span><strong>${escapeHTML(prettyMove((t.order||{}).move))}</strong> — ${escapeHTML((t.order||{}).reasoning || "")}</span>
+		<div class="lc-moves">
+			<span class="lc-chip order"><span class="dot"></span>${escapeHTML(prettyMove((t.order||{}).move))}</span>
+			<span class="lc-chip shadow"><span class="dot"></span>${escapeHTML(prettyMove((t.shadow||{}).move))}</span>
 		</div>
-		<div class="lc-line shadow">
-			<span class="lc-dot"></span>
-			<span><strong>${escapeHTML(prettyMove((t.shadow||{}).move))}</strong> — ${escapeHTML((t.shadow||{}).reasoning || "")}</span>
-		</div>
-		<div class="lc-verdict" data-winner="${escapeHTML(winner)}">${escapeHTML(winnerLabel)} · ${escapeHTML((t.throne||{}).reasoning || "")}</div>
+		<div class="lc-verdict" data-winner="${escapeHTML(winner)}">${escapeHTML(winnerLabel)}</div>
 	`;
 	els.liveList.prepend(card);
 	while (els.liveList.children.length > LIVE_RAIL_MAX) {
 		els.liveList.lastElementChild.remove();
 	}
+}
+
+function updateThroneUtterance(t, state) {
+	const root = document.getElementById("throne-utterance");
+	const txt = document.getElementById("ut-text");
+	const turnEl = document.getElementById("ut-turn");
+	if (!root || !txt) return;
+	if (!t) {
+		// no turns yet — idle copy reflects state
+		if (state && state.status && state.status !== "active" && TERMINAL_COPY[state.status]) {
+			txt.textContent = TERMINAL_COPY[state.status].verdict;
+		} else {
+			txt.textContent = "The Ring waits.";
+		}
+		root.removeAttribute("data-winner");
+		if (turnEl) turnEl.textContent = "";
+		return;
+	}
+	const winner = (t.throne && t.throne.winner) || "";
+	const verdict = (t.throne && t.throne.reasoning) || "";
+	txt.textContent = verdict || "—";
+	root.setAttribute("data-winner", winner);
+	if (turnEl) turnEl.textContent = `Turn ${t.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
+	// brief flash to draw the eye
+	root.classList.remove("flash");
+	void root.offsetWidth;
+	root.classList.add("flash");
 }
 
 function pushToast(t) {
@@ -1400,29 +1521,31 @@ function pushToast(t) {
 	}, 4400);
 }
 
-function handleNewTurns(turnsSortedNewestFirst) {
-	if (!turnsSortedNewestFirst.length) return;
+function handleNewTurns(turnsSortedNewestFirst, state) {
+	if (!turnsSortedNewestFirst.length) {
+		updateThroneUtterance(null, state);
+		return;
+	}
 	const top = turnsSortedNewestFirst[0].turn || 0;
 
 	if (_firstRender) {
-		// On first render, seed the live rail with the most recent turns but
-		// don't toast (avoid blasting historical pings on page load).
+		// First render — seed rail with recent turns (no stagger, no toast).
 		_firstRender = false;
 		_highestTurnSeen = top;
 		const seed = turnsSortedNewestFirst.slice(0, LIVE_RAIL_MAX).reverse();
-		for (const t of seed) pushLiveCard(t);
+		for (const t of seed) pushLiveCard(t, false);
+		updateThroneUtterance(turnsSortedNewestFirst[0], state);
 		return;
 	}
 
-	// Fire for anything strictly newer than what we've shown
 	const fresh = turnsSortedNewestFirst.filter((t) => (t.turn || 0) > _highestTurnSeen);
 	if (fresh.length === 0) return;
-	// Oldest-first so latest ends up on top with newest animation
 	for (const t of fresh.slice().reverse()) {
-		pushLiveCard(t);
+		pushLiveCard(t, true);   // stream → staggered chip reveal
 		pushToast(t);
 	}
 	_highestTurnSeen = top;
+	updateThroneUtterance(turnsSortedNewestFirst[0], state);
 }
 
 /* ===== Connection state ===== */
@@ -1509,15 +1632,16 @@ function render(payload) {
 		els.feedEmpty.style.display = "";
 		els.feedCount.textContent = "—";
 		if (els.liveCount) els.liveCount.textContent = "0";
+		updateThroneUtterance(null, state);
 	} else {
 		els.feedEmpty.style.display = "none";
 		els.feedCount.textContent = `${turns.length} ${turns.length === 1 ? "turn" : "turns"}`;
 		const sorted = [...turns].sort((a, b) => (b.turn || 0) - (a.turn || 0));
 		els.feed.innerHTML = sorted.map(turnHTML).join("");
 
-		// Live rail + toast: only fire for genuinely new turns
+		// Live rail + toast + throne utterance — fires for genuinely new turns
 		if (els.liveCount) els.liveCount.textContent = String(turns.length);
-		handleNewTurns(sorted);
+		handleNewTurns(sorted, state);
 	}
 
 	const latest = turns.length ? turns.reduce((a, b) => (b.turn || 0) > (a.turn || 0) ? b : a) : null;

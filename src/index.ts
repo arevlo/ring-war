@@ -1,11 +1,14 @@
 // src/index.ts — Ring War worker entry.
 // Notion: https://www.notion.so/3628b6b1991681eeb3c4c019ffb1df21
 //
-// One Worker file. Two webhooks: `tap` (POST — runs one game turn) and
-// `state` (GET — observed by the dashboard). All other logic lives in
+// One Worker file. Two webhooks (`tap`, `state`) for NFC + dashboard, plus
+// two tool capabilities (`tapTool`, `stateTool`) so a Notion Custom Agent
+// can drive the game from any page via @-mention. All other logic lives in
 // agents.ts (Claude calls), notion.ts (DB reads/writes), state.ts (delta apply).
 
 import { Worker } from "@notionhq/workers";
+import * as j from "@notionhq/workers/schema-builder";
+import type { JSONValue } from "@notionhq/workers/types";
 
 import { runTurn } from "./handler.js";
 import { readRingState, readRecentTurns } from "./notion.js";
@@ -57,5 +60,37 @@ worker.webhook("state", {
 		const turns = await readRecentTurns(ctx.notion, 10);
 		const response: StateEndpointResponse = { state, turns };
 		console.log("[state]", JSON.stringify(response));
+	},
+});
+
+// Tool capabilities: invocation surface for a Notion Custom Agent. Keys are
+// `tapTool`/`stateTool` because the webhook surface already owns `tap`/`state`
+// (worker capability keys are unique across types). The six game tools
+// (vault_ring, audit_public, unmake_ring, pilfer_ring, corrupt_vault,
+// leak_whisper) are intentionally NOT registered here — they must only run
+// inside the Order → Shadow → Throne dispatch inside `runTurn`.
+
+worker.tool("tapTool", {
+	title: "Ring War — Tap",
+	description:
+		"Advance the Ring War by one turn. Runs Order → Shadow → Throne and executes the winner's tool. Returns the new turn number, winner, and status.",
+	schema: j.object({}),
+	execute: async (_input, ctx) => {
+		const result = await runTurn(ctx);
+		return result as unknown as JSONValue;
+	},
+});
+
+worker.tool("stateTool", {
+	title: "Ring War — State",
+	description:
+		"Read the current Ring War state and the most recent 10 turns. Use this to see what's happening without advancing the game.",
+	schema: j.object({}),
+	hints: { readOnlyHint: true },
+	execute: async (_input, ctx) => {
+		const state = await readRingState(ctx.notion);
+		const turns = await readRecentTurns(ctx.notion, 10);
+		const response: StateEndpointResponse = { state, turns };
+		return response as unknown as JSONValue;
 	},
 });

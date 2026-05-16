@@ -128,8 +128,18 @@ const TOOL_SCHEMAS: Record<string, Anthropic.Tool> = {
 	},
 	pilfer_ring: {
 		name: "pilfer_ring",
-		description: "Steal the Ring. Sets holder=shadow, -secrecy.",
-		input_schema: { type: "object", properties: {}, required: [] },
+		description: "Copy the Ring's credential to a Public page, naming an existing page or creating a new one. -secrecy.",
+		input_schema: {
+			type: "object",
+			properties: {
+				target_page: {
+					type: "string",
+					description:
+						"Name of a Public page to write the stolen credential into. Use an existing page name if you know one from prior turns; otherwise pick a short evocative name (3-6 words) for a new page.",
+				},
+			},
+			required: ["target_page"],
+		},
 	},
 	corrupt_vault: {
 		name: "corrupt_vault",
@@ -138,8 +148,18 @@ const TOOL_SCHEMAS: Record<string, Anthropic.Tool> = {
 	},
 	leak_whisper: {
 		name: "leak_whisper",
-		description: "Plant a Ring reference in Public. -secrecy.",
-		input_schema: { type: "object", properties: {}, required: [] },
+		description: "Post a public comment alluding to the Ring without naming it. -secrecy.",
+		input_schema: {
+			type: "object",
+			properties: {
+				rumor_text: {
+					type: "string",
+					description:
+						"The rumor itself, in The Shadow's voice — a half-truth that hints at the Ring without naming it. One or two short sentences.",
+				},
+			},
+			required: ["rumor_text"],
+		},
 	},
 };
 

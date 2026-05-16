@@ -22,10 +22,7 @@ This quarter we shipped the new sync runner, granular permission scopes, and the
 
 ## #design Slack export — 2026-05-14
 
-> **carlos:** the new empty state lands better than the old one, nice work
-> **priya:** thanks! one nit — the illustration feels a touch heavy on the left, going to nudge it
-> **maya:** +1, also can we tighten the body copy? it reads long on mobile
-> **carlos:** good catch, I'll take a pass tonight
+carlos: the new empty state lands better than the old one, nice work. priya: thanks! one nit — the illustration feels a touch heavy on the left, going to nudge it. maya: +1, also can we tighten the body copy? it reads long on mobile. carlos: good catch, I'll take a pass tonight.
 
 ## Postmortem — cache invalidation incident, 2026-05-08
 

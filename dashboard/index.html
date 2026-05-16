@@ -587,14 +587,14 @@
 	.stage {
 		display: grid;
 		justify-items: center;
-		gap: 24px;
-		padding: clamp(40px, 6vw, 64px) 0 clamp(28px, 5vw, 40px);
+		gap: 18px;
+		padding: clamp(20px, 3vw, 40px) 0 clamp(20px, 3vw, 32px);
 		position: relative;
 	}
 	.eye-wrap {
 		position: relative;
-		width: min(80vw, 520px);
-		height: min(80vw, 520px);   /* explicit height — aspect-ratio was being lost in some layouts */
+		width: min(62vw, 420px);
+		height: min(62vw, 420px);   /* explicit height — aspect-ratio was being lost in some layouts */
 		display: block;
 	}
 	.eye-canvas {
@@ -724,20 +724,20 @@
 	   Mirrors the liquid-glass treatment of the cards. Updates on every new turn. */
 	.throne-utterance {
 		max-width: min(720px, 90vw);
-		margin: 14px auto 0;
+		margin: 4px auto 8px;
 		text-align: center;
-		padding: 14px 22px 16px;
+		padding: 13px 22px 15px;
 		border-radius: 14px;
 		background:
 			linear-gradient(180deg,
-				color-mix(in oklab, var(--surface)   45%, transparent),
-				color-mix(in oklab, var(--surface-2) 38%, transparent));
-		backdrop-filter: blur(22px) saturate(1.25);
-		-webkit-backdrop-filter: blur(22px) saturate(1.25);
-		border: 1px solid color-mix(in oklab, var(--rule) 55%, transparent);
+				color-mix(in oklab, var(--surface)   84%, transparent),
+				color-mix(in oklab, var(--surface-2) 78%, transparent));
+		backdrop-filter: blur(42px) saturate(1.45);
+		-webkit-backdrop-filter: blur(42px) saturate(1.45);
+		border: 1px solid color-mix(in oklab, var(--rule-strong) 78%, transparent);
 		box-shadow:
-			inset 0 1px 0 rgba(255,255,255,0.10),
-			0 10px 30px rgba(0,0,0,0.30);
+			inset 0 1px 0 rgba(255,255,255,0.12),
+			0 12px 32px rgba(0,0,0,0.32);
 		transition: opacity 320ms ease;
 	}
 	.throne-utterance .ut-label {
@@ -871,18 +871,17 @@
 	.turn-card {
 		background:
 			linear-gradient(180deg,
-				color-mix(in oklab, var(--surface)   45%, transparent),
-				color-mix(in oklab, var(--surface-2) 38%, transparent));
-		backdrop-filter: blur(22px) saturate(1.25);
-		-webkit-backdrop-filter: blur(22px) saturate(1.25);
-		border: 1px solid color-mix(in oklab, var(--rule) 60%, transparent);
+				color-mix(in oklab, var(--surface)   80%, transparent),
+				color-mix(in oklab, var(--surface-2) 74%, transparent));
+		backdrop-filter: blur(40px) saturate(1.4);
+		-webkit-backdrop-filter: blur(40px) saturate(1.4);
+		border: 1px solid color-mix(in oklab, var(--rule-strong) 75%, transparent);
 		border-radius: 12px;
 		padding: 14px 18px 16px;
 		position: relative;
-		/* iOS-style inner top highlight + bottom-shadow */
 		box-shadow:
 			inset 0 1px 0 rgba(255,255,255,0.10),
-			0 8px 24px rgba(0,0,0,0.25);
+			0 8px 24px rgba(0,0,0,0.28);
 	}
 	.turn-card::before {
 		/* Connector from gutter to card */
@@ -1134,16 +1133,16 @@
 	.live-card {
 		background:
 			linear-gradient(180deg,
-				color-mix(in oklab, var(--surface)   38%, transparent),
-				color-mix(in oklab, var(--surface-2) 30%, transparent));
-		backdrop-filter: blur(28px) saturate(1.3);
-		-webkit-backdrop-filter: blur(28px) saturate(1.3);
-		border: 1px solid color-mix(in oklab, var(--rule) 55%, transparent);
+				color-mix(in oklab, var(--surface)   82%, transparent),
+				color-mix(in oklab, var(--surface-2) 76%, transparent));
+		backdrop-filter: blur(40px) saturate(1.45);
+		-webkit-backdrop-filter: blur(40px) saturate(1.45);
+		border: 1px solid color-mix(in oklab, var(--rule-strong) 75%, transparent);
 		border-radius: 14px;
 		padding: 11px 14px 13px;
 		box-shadow:
 			inset 0 1px 0 rgba(255,255,255,0.12),
-			0 10px 30px rgba(0,0,0,0.30);
+			0 10px 30px rgba(0,0,0,0.32);
 		opacity: 0;
 		transform: translateX(24px);
 		animation: liveSlideIn 520ms cubic-bezier(0.34, 1.06, 0.64, 1) forwards;
@@ -1217,6 +1216,40 @@
 		to   { opacity: 1; transform: translateX(0); }
 	}
 
+	/* Summoning placeholder — sits in the live rail while the worker thinks */
+	.live-card.placeholder {
+		text-align: center;
+	}
+	.live-card.placeholder .lc-head .lc-pending {
+		color: var(--amber);
+		letter-spacing: 0.26em;
+	}
+	.live-card.placeholder .lc-pending-msg {
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		color: var(--ink-soft);
+		font-size: 13px;
+		padding: 6px 4px 2px;
+	}
+	.live-card.placeholder .lc-pending-dots {
+		display: inline-flex;
+		gap: 4px;
+		justify-content: center;
+		padding: 6px 0 4px;
+	}
+	.live-card.placeholder .lc-pending-dots span {
+		width: 6px; height: 6px; border-radius: 50%;
+		background: var(--amber);
+		opacity: 0.35;
+	}
+	.live-card.placeholder .lc-pending-dots span:nth-child(1) { animation: dotPulse 1.2s ease-in-out infinite    0ms; }
+	.live-card.placeholder .lc-pending-dots span:nth-child(2) { animation: dotPulse 1.2s ease-in-out infinite  200ms; }
+	.live-card.placeholder .lc-pending-dots span:nth-child(3) { animation: dotPulse 1.2s ease-in-out infinite  400ms; }
+	@keyframes dotPulse {
+		0%, 100% { opacity: 0.30; transform: scale(0.85); }
+		50%      { opacity: 1.00; transform: scale(1.10); }
+	}
+
 	@keyframes liveSlideIn {
 		from { opacity: 0; transform: translateX(28px); }
 		to   { opacity: 1; transform: translateX(0); }
@@ -1245,25 +1278,45 @@
 	.toast {
 		background:
 			linear-gradient(180deg,
-				color-mix(in oklab, var(--surface)   55%, transparent),
-				color-mix(in oklab, var(--surface-2) 48%, transparent));
-		backdrop-filter: blur(28px) saturate(1.4);
-		-webkit-backdrop-filter: blur(28px) saturate(1.4);
-		border: 1px solid color-mix(in oklab, var(--rule-strong) 50%, transparent);
+				color-mix(in oklab, var(--surface)   88%, transparent),
+				color-mix(in oklab, var(--surface-2) 82%, transparent));
+		backdrop-filter: blur(44px) saturate(1.5);
+		-webkit-backdrop-filter: blur(44px) saturate(1.5);
+		border: 1px solid color-mix(in oklab, var(--rule-strong) 80%, transparent);
 		border-radius: 14px;
 		padding: 11px 14px;
 		box-shadow:
-			inset 0 1px 0 rgba(255,255,255,0.12),
-			0 12px 36px rgba(0,0,0,0.40);
+			inset 0 1px 0 rgba(255,255,255,0.14),
+			0 16px 44px rgba(0,0,0,0.45);
 		opacity: 0;
-		transform: translateY(12px) scale(0.96);
-		animation: toastIn 380ms cubic-bezier(0.34, 1.06, 0.64, 1) forwards;
+		transform: translateX(28px) scale(0.97);
+		animation: toastIn 460ms cubic-bezier(0.34, 1.18, 0.64, 1) forwards;
 		display: grid;
-		grid-template-columns: 22px 1fr;
-		gap: 10px;
-		align-items: center;
+		grid-template-columns: 24px 1fr;
+		gap: 11px;
+		align-items: start;
+		max-width: 100%;
+		pointer-events: auto;       /* allow hover-to-pause if we add it later */
+		position: relative;
+		overflow: hidden;
 	}
-	.toast.toast-leaving { animation: toastOut 320ms ease-in forwards; }
+	.toast.toast-leaving { animation: toastOut 480ms cubic-bezier(0.4, 0, 0.6, 1) forwards; }
+	/* Bottom timer line that drains for the toast's lifetime — implicit "auto-dismiss in N" cue */
+	.toast::after {
+		content: "";
+		position: absolute;
+		left: 0; bottom: 0;
+		height: 2px;
+		background: linear-gradient(90deg, color-mix(in oklab, var(--amber) 70%, transparent), color-mix(in oklab, var(--amber) 30%, transparent));
+		width: 100%;
+		transform-origin: left;
+		animation: toastTimer 4400ms linear forwards;
+	}
+	.toast[data-winner="order"]::after  { background: linear-gradient(90deg, var(--order), color-mix(in oklab, var(--order) 30%, transparent)); }
+	.toast[data-winner="shadow"]::after { background: linear-gradient(90deg, var(--shadow), color-mix(in oklab, var(--shadow) 30%, transparent)); }
+	/* Summoning toast is open-ended — no draining timer */
+	.toast[data-summoning="1"]::after { display: none; }
+	@keyframes toastTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 	.toast .t-badge {
 		width: 22px; height: 22px;
 		border-radius: 50%;
@@ -1288,14 +1341,28 @@
 		font-family: "Fraunces", Georgia, serif;
 		font-style: italic;
 	}
+	.toast .t-src {
+		display: inline-block;
+		margin-left: 6px;
+		padding: 1px 7px;
+		font-size: 9.5px;
+		font-weight: 700;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--mute);
+		background: color-mix(in oklab, var(--surface-2) 70%, transparent);
+		border: 1px solid color-mix(in oklab, var(--rule-strong) 60%, transparent);
+		border-radius: 999px;
+		vertical-align: 1px;
+	}
 	.toast[data-winner="order"]  .t-badge { background: color-mix(in oklab, var(--order)  30%, transparent); border-color: color-mix(in oklab, var(--order) 55%, transparent); color: var(--order); }
 	.toast[data-winner="shadow"] .t-badge { background: color-mix(in oklab, var(--shadow) 30%, transparent); border-color: color-mix(in oklab, var(--shadow) 55%, transparent); color: var(--shadow); }
 	@keyframes toastIn {
-		from { opacity: 0; transform: translateY(12px) scale(0.96); }
-		to   { opacity: 1; transform: translateY(0) scale(1); }
+		from { opacity: 0; transform: translateX(28px) scale(0.97); }
+		to   { opacity: 1; transform: translateX(0) scale(1); }
 	}
 	@keyframes toastOut {
-		to { opacity: 0; transform: translateY(8px) scale(0.97); }
+		to { opacity: 0; transform: translateX(32px) scale(0.96); }
 	}
 
 	/* sr-only — visible to screen readers only */
@@ -1383,9 +1450,6 @@
 			<div class="orb-shadow"></div>
 		</div>
 
-		<button class="tap-btn" id="summon" type="button">Tap to summon</button>
-		<p class="tap-hint" id="tap-hint">The Ring waits.</p>
-
 		<aside class="throne-utterance" id="throne-utterance" aria-live="polite">
 			<div class="ut-label">
 				<span>The Throne speaks</span>
@@ -1393,6 +1457,9 @@
 			</div>
 			<p class="ut-text" id="ut-text">The Ring waits.</p>
 		</aside>
+
+		<button class="tap-btn" id="summon" type="button">Tap to summon</button>
+		<p class="tap-hint" id="tap-hint">The Ring waits.</p>
 	</section>
 
 	<section class="feed-section" aria-label="Turn history">
@@ -1593,10 +1660,11 @@ function updateThroneUtterance(t, state) {
 	root.classList.add("flash");
 }
 
-function pushToast(t) {
+function pushToast(t, source) {
 	if (!els.toastRail) return;
 	const winner = (t.throne && t.throne.winner) || "";
 	const verdict = (t.throne && t.throne.reasoning) || "";
+	const srcLabel = source || _lastTapSource || "Webhook";
 	const node = document.createElement("div");
 	node.className = "toast";
 	node.dataset.winner = winner;
@@ -1605,14 +1673,98 @@ function pushToast(t) {
 		<div class="t-badge">${t.turn ?? "?"}</div>
 		<div class="t-msg">
 			Turn ${t.turn} · ${winner ? winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : "Verdict"}
+			<span class="t-src">${escapeHTML(srcLabel)}</span>
 			<span class="t-line2">${escapeHTML(verdict)}</span>
 		</div>
 	`;
 	els.toastRail.appendChild(node);
 	setTimeout(() => {
 		node.classList.add("toast-leaving");
-		setTimeout(() => node.remove(), 360);
+		setTimeout(() => node.remove(), 480);
 	}, 4400);
+}
+
+/* ===== Summoning placeholders + hint cycling ===== */
+let _lastTapSource = null;
+let _placeholderEl = null;
+let _summoningToastEl = null;
+let _hintCycleTimer = null;
+
+const HINT_STAGES = [
+	"The Ring stirs.",
+	"Order considers its move…",
+	"Shadow weighs its strike…",
+	"The Throne contemplates the verdict.",
+];
+
+function startSummoning(source) {
+	_lastTapSource = source;
+	// Placeholder card in the rail
+	if (els.liveList) {
+		if (_placeholderEl && _placeholderEl.isConnected) _placeholderEl.remove();
+		const card = document.createElement("article");
+		card.className = "live-card placeholder";
+		card.innerHTML = `
+			<div class="lc-head">
+				<span class="lc-turn lc-pending">Summoning</span>
+				<span>${escapeHTML(source)}</span>
+			</div>
+			<div class="lc-pending-dots"><span></span><span></span><span></span></div>
+			<div class="lc-pending-msg" id="lc-pending-msg">${escapeHTML(HINT_STAGES[0])}</div>
+		`;
+		els.liveList.prepend(card);
+		_placeholderEl = card;
+	}
+	// Summoning toast (replaced when turn arrives)
+	if (els.toastRail) {
+		if (_summoningToastEl && _summoningToastEl.isConnected) _summoningToastEl.remove();
+		const t = document.createElement("div");
+		t.className = "toast";
+		t.dataset.summoning = "1";
+		t.innerHTML = `
+			<div class="t-badge">…</div>
+			<div class="t-msg">
+				Summoning the Ring
+				<span class="t-src">${escapeHTML(source)}</span>
+				<span class="t-line2" id="summon-toast-line">${escapeHTML(HINT_STAGES[0])}</span>
+			</div>
+		`;
+		// Don't let the timer drain — summoning toast is open-ended
+		t.style.setProperty("animation-duration", "0s, 460ms");
+		els.toastRail.appendChild(t);
+		_summoningToastEl = t;
+	}
+	// Cycle hint text in tap-hint AND both placeholders
+	stopSummoningHint();
+	let i = 0;
+	els.tapHint.textContent = HINT_STAGES[0];
+	_hintCycleTimer = setInterval(() => {
+		i = (i + 1) % HINT_STAGES.length;
+		els.tapHint.textContent = HINT_STAGES[i];
+		const placeholderMsg = document.getElementById("lc-pending-msg");
+		if (placeholderMsg) placeholderMsg.textContent = HINT_STAGES[i];
+		const toastLine = document.getElementById("summon-toast-line");
+		if (toastLine) toastLine.textContent = HINT_STAGES[i];
+	}, 2400);
+}
+
+function stopSummoningHint() {
+	if (_hintCycleTimer) clearInterval(_hintCycleTimer);
+	_hintCycleTimer = null;
+}
+
+function clearSummoningPlaceholder() {
+	stopSummoningHint();
+	if (_placeholderEl && _placeholderEl.isConnected) {
+		_placeholderEl.classList.add("fading");
+		setTimeout(() => _placeholderEl && _placeholderEl.remove(), 620);
+	}
+	_placeholderEl = null;
+	if (_summoningToastEl && _summoningToastEl.isConnected) {
+		_summoningToastEl.classList.add("toast-leaving");
+		setTimeout(() => _summoningToastEl && _summoningToastEl.remove(), 480);
+	}
+	_summoningToastEl = null;
 }
 
 function handleNewTurns(turnsSortedNewestFirst, state) {
@@ -1634,10 +1786,14 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 
 	const fresh = turnsSortedNewestFirst.filter((t) => (t.turn || 0) > _highestTurnSeen);
 	if (fresh.length === 0) return;
+	// Real turn(s) arrived — clear any in-flight summoning placeholder + toast
+	clearSummoningPlaceholder();
+	els.tapHint.textContent = HINT_ORDERED;
 	for (const t of fresh.slice().reverse()) {
 		pushLiveCard(t, true);   // stream → staggered chip reveal
-		pushToast(t);
+		pushToast(t, _lastTapSource || "Webhook");
 	}
+	_lastTapSource = null;
 	_highestTurnSeen = top;
 	updateThroneUtterance(turnsSortedNewestFirst[0], state);
 }
@@ -1804,6 +1960,7 @@ const CLIMAX = {
 function showEnd(status) {
 	if (terminal) return;
 	terminal = true;
+	clearSummoningPlaceholder();
 	els.tapBtn.disabled = true;
 	els.tapHint.textContent = HINT_OVER;
 	setConn("awaiting", "Ended");
@@ -1852,6 +2009,7 @@ async function replay() {
 		_highestTurnSeen = -1;
 		_firstRender = true;
 		lastSig = "";
+		clearSummoningPlaceholder();
 		if (els.liveList) els.liveList.innerHTML = "";
 		if (els.toastRail) els.toastRail.innerHTML = "";
 		els.eyeWrap.classList.remove("eye-dim", "climax-rage", "climax-flare", "climax-fade");
@@ -1930,7 +2088,9 @@ els.tapBtn.addEventListener("click", async () => {
 		} else {
 			const r = await fetch(TAP_URL, { method: "POST" });
 			if (!r.ok) throw new Error("tap http " + r.status);
-			els.tapHint.textContent = HINT_ORDERED;
+			// Kick off the visible "summoning" state — placeholder card, toast,
+			// and hint text cycling through faction stages while the worker thinks.
+			startSummoning("Tap to Summon");
 			setTimeout(poll, 300);
 		}
 	} catch (err) {

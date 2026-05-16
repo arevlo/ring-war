@@ -4,9 +4,11 @@
 // This file is the contract between the Worker Core, the Tools, the Prompts,
 // and the Dashboard. Keep it small and stable.
 
+import type { Client } from "@notionhq/client";
+
 export type Holder = "order" | "shadow" | "free";
 
-export type Status = "active" | "destroyed" | "exfiltrated" | "stalemate";
+export type GameStatus = "active" | "destroyed" | "exfiltrated" | "stalemate";
 
 export type Winner = "order" | "shadow";
 
@@ -17,23 +19,26 @@ export interface RingState {
 	integrity: number;
 	secrecy: number;
 	turnNumber: number;
-	status: Status;
+	status: GameStatus;
 }
 
 // A StateDelta is the return value of a tool. The handler applies it to the
 // current RingState (clamping integrity/secrecy to [0,100], respecting capAt100)
 // and writes the result back to the Ring State DB.
 //
+// Numeric fields are RELATIVE: integrityDelta=-8 means subtract 8 from current.
+// holder/status are absolute when set. Tools that do not move a field omit it.
+//
 // - `failed: true` means the tool ran but the move did not land (e.g. defended).
-//   The handler should still record the turn but treat it as a no-op delta.
-// - `capAt100` means clamp the post-state to 100 even if the math would exceed it
-//   (used by Order tools that "restore" a stat that's already at full).
+//   The handler still advances turnNumber and records the turn, but treats the
+//   numeric/holder/status fields as no-ops.
+// - `capAt100` means clamp the result at 100 even if the delta would exceed it
+//   (Order tools that "restore" a stat already at full).
 export interface StateDelta {
 	holder?: Holder;
-	integrity?: number;
-	secrecy?: number;
-	turnNumber?: number;
-	status?: Status;
+	integrityDelta?: number;
+	secrecyDelta?: number;
+	status?: GameStatus;
 	failed?: boolean;
 	capAt100?: boolean;
 }
@@ -71,17 +76,16 @@ export interface ThroneVerdict {
 // Context passed to a tool's execute function.
 // `notion` is the @notionhq/client SDK instance from the Worker runtime.
 export interface ToolContext {
-	notion: unknown;
-	env: Record<string, string | undefined>;
+	notion: Client;
 }
 
 // The shape every Ring War tool implements. Tools return a StateDelta;
 // they do not mutate Ring State directly.
-export interface Tool<Input = Record<string, unknown>> {
+export interface Tool<TInput = Record<string, never>> {
 	name: string;
 	description: string;
 	inputSchema: Record<string, unknown>;
-	execute(input: Input, state: RingState, ctx: ToolContext): Promise<StateDelta>;
+	execute(input: TInput, state: RingState, ctx: ToolContext): Promise<StateDelta>;
 }
 
 // The dashboard polls this. N=10 most recent turns, newest first.

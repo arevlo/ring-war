@@ -375,11 +375,6 @@
 		position: relative;
 		z-index: 2;
 	}
-	/* On widths where the live rail is visible, reserve space on the right so
-	   .app's centered content doesn't slide under the rail. */
-	@media (min-width: 1200px) {
-		body { padding-right: 296px; }
-	}
 
 	/* ===== Header ===== */
 	.header {
@@ -592,8 +587,8 @@
 	.stage {
 		display: grid;
 		justify-items: center;
-		gap: 18px;
-		padding: clamp(20px, 3vw, 40px) 0 clamp(20px, 3vw, 32px);
+		gap: clamp(20px, 2.4vw, 30px);
+		padding: clamp(24px, 3.4vw, 44px) 0 clamp(24px, 3vw, 36px);
 		position: relative;
 	}
 	.eye-wrap {
@@ -1102,18 +1097,18 @@
 	/* ===== Live rail (right side) — recent turns as they happen ===== */
 	.live-rail {
 		position: fixed;
-		right: clamp(14px, 1.5vw, 26px);
+		right: clamp(12px, 1.4vw, 22px);
 		top: clamp(120px, 17vh, 200px);
-		width: clamp(210px, 17vw, 260px);
-		max-height: 70vh;
+		width: clamp(196px, 14vw, 232px);
+		max-height: 68vh;
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
 		z-index: 25;
 		pointer-events: none;     /* never blocks the orb */
 		overflow: hidden;
-		mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
-		-webkit-mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
+		mask-image: linear-gradient(to bottom, black 0%, black 76%, transparent 100%);
+		-webkit-mask-image: linear-gradient(to bottom, black 0%, black 76%, transparent 100%);
 	}
 	.live-rail .live-heading {
 		display: flex;

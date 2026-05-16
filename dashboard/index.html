@@ -1021,9 +1021,9 @@
 	/* ===== Live rail (right side) — recent turns as they happen ===== */
 	.live-rail {
 		position: fixed;
-		right: clamp(12px, 1.6vw, 24px);
+		right: clamp(14px, 1.5vw, 26px);
 		top: clamp(120px, 17vh, 200px);
-		width: clamp(260px, 22vw, 340px);
+		width: clamp(210px, 17vw, 260px);
 		max-height: 70vh;
 		display: flex;
 		flex-direction: column;
@@ -1031,8 +1031,8 @@
 		z-index: 25;
 		pointer-events: none;     /* never blocks the orb */
 		overflow: hidden;
-		mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
-		-webkit-mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
+		mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
+		-webkit-mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
 	}
 	.live-rail .live-heading {
 		display: flex;
@@ -1145,7 +1145,13 @@
 		to   { opacity: 1; transform: translateX(0); }
 	}
 
-	@media (max-width: 1100px) { .live-rail { display: none; } }
+	@media (max-width: 1199px) { .live-rail { display: none; } }
+
+	/* Auto-fade: card lifetime ~35s, then ease out and self-remove */
+	.live-card.fading { animation: liveFadeOut 600ms ease-in forwards; }
+	@keyframes liveFadeOut {
+		to { opacity: 0; transform: translateX(28px); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; border-color: transparent; }
+	}
 
 	/* ===== Toast rail (bottom-right) — "summon resolved" pings ===== */
 	.toast-rail {
@@ -1447,7 +1453,8 @@ const els = {
 /* ===== Live-rail / toast machinery ===== */
 let _highestTurnSeen = -1;        // -1 = never rendered; 0+ = highest turn # already displayed
 let _firstRender = true;
-const LIVE_RAIL_MAX = 5;
+const LIVE_RAIL_MAX = 3;
+const LIVE_CARD_TTL_MS = 35000;   // each rail card fades out after ~35s
 
 function pushLiveCard(t, stream) {
 	if (!els.liveList) return;
@@ -1470,6 +1477,13 @@ function pushLiveCard(t, stream) {
 	while (els.liveList.children.length > LIVE_RAIL_MAX) {
 		els.liveList.lastElementChild.remove();
 	}
+	// Each card has a TTL — chronicle below is the permanent record
+	const ttl = stream ? LIVE_CARD_TTL_MS : LIVE_CARD_TTL_MS * 1.6;  // seeded ones live a touch longer
+	setTimeout(() => {
+		if (!card.isConnected) return;
+		card.classList.add("fading");
+		setTimeout(() => card.remove(), 620);
+	}, ttl);
 }
 
 function updateThroneUtterance(t, state) {

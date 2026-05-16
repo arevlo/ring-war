@@ -588,7 +588,7 @@
 		display: grid;
 		justify-items: center;
 		gap: clamp(20px, 2.4vw, 30px);
-		padding: clamp(24px, 3.4vw, 44px) 0 clamp(24px, 3vw, 36px);
+		padding: clamp(24px, 3.4vw, 44px) 0 clamp(64px, 8vw, 96px);
 		position: relative;
 	}
 	.eye-wrap {
@@ -817,7 +817,7 @@
 	.turn {
 		position: relative;
 		padding: 0 0 22px 76px;
-		margin-bottom: 14px;
+		margin-bottom: 16px;
 		opacity: 0;
 		animation: fade-in 320ms ease-out forwards;
 	}
@@ -1103,7 +1103,7 @@
 		max-height: 68vh;
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 16px;
 		z-index: 25;
 		pointer-events: none;     /* never blocks the orb */
 		overflow: hidden;
@@ -1120,6 +1120,11 @@
 		color: var(--ink-soft);
 		padding: 0 4px 4px;
 		font-weight: 600;
+	}
+	.live-rail #live-list {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
 	}
 	.live-rail .live-heading .dot {
 		width: 7px; height: 7px; border-radius: 50%;
@@ -1775,17 +1780,30 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	const top = turnsSortedNewestFirst[0].turn || 0;
 
 	if (_firstRender) {
-		// First render — seed rail with recent turns (no stagger, no toast).
+		// First render — DON'T seed historical turns into the rail. The rail
+		// is a "what just happened" ticker; the chronicle below is the archive.
+		// Just remember the top so future fresh-turn detection works, and
+		// update the throne utterance to show the most recent verdict.
 		_firstRender = false;
 		_highestTurnSeen = top;
-		const seed = turnsSortedNewestFirst.slice(0, LIVE_RAIL_MAX).reverse();
-		for (const t of seed) pushLiveCard(t, false);
 		updateThroneUtterance(turnsSortedNewestFirst[0], state);
 		return;
 	}
 
-	const fresh = turnsSortedNewestFirst.filter((t) => (t.turn || 0) > _highestTurnSeen);
+	// Dedupe by turn number — the worker can produce multiple Turn rows
+	// with the same number during a contested play, but the rail should
+	// show each turn once.
+	const fresh = [];
+	const seenInThisBatch = new Set();
+	for (const t of turnsSortedNewestFirst) {
+		const n = t.turn || 0;
+		if (n <= _highestTurnSeen) continue;
+		if (seenInThisBatch.has(n)) continue;
+		seenInThisBatch.add(n);
+		fresh.push(t);
+	}
 	if (fresh.length === 0) return;
+
 	// Real turn(s) arrived — clear any in-flight summoning placeholder + toast
 	clearSummoningPlaceholder();
 	els.tapHint.textContent = HINT_ORDERED;

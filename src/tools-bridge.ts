@@ -2,15 +2,16 @@
 // Notion: https://www.notion.so/3628b6b1991681fdb0add5b495cfcecf
 //
 // Agent 2 owns src/tools/*.ts and exports a `tools` registry from
-// src/tools/index.ts. Until that lands on this branch, we fall back to
-// plausible stubs so the worker boots and a smoke test runs end-to-end.
+// src/tools/index.ts as Record<string, Tool>. The handler looks up the tool
+// by name and calls .execute(input, state, ctx).
 //
-// IMPORTANT: do not implement real tool logic here. Move it to src/tools/.
+// If src/tools/index.ts is absent (e.g. during a partial checkout), we fall
+// back to plausible stubs so the worker still boots and a smoke test runs.
 
-import type { RingState, StateDelta, ToolContext } from "./types.js";
+import type { RingState, StateDelta, Tool, ToolContext } from "./types.js";
 
 interface ToolModule {
-	tools?: Record<string, (input: any, state: RingState, ctx: ToolContext) => Promise<StateDelta>>;
+	tools?: Record<string, Tool>;
 }
 
 let registry: ToolModule["tools"] | undefined;
@@ -21,7 +22,7 @@ async function loadRegistry(): Promise<ToolModule["tools"] | undefined> {
 	registryLoaded = true;
 	try {
 		// Built path so TypeScript doesn't require the file to exist at compile
-		// time. Agent 2 lands src/tools/index.ts on its branch independently.
+		// time. Agent 2's src/tools/index.ts is on main.
 		const path = "./tools/index.js";
 		const mod = (await import(path)) as ToolModule;
 		registry = mod.tools;
@@ -40,9 +41,9 @@ export async function resolveTool(
 	ctx: ToolContext,
 ): Promise<StateDelta> {
 	const reg = await loadRegistry();
-	const fn = reg?.[name];
-	if (fn) {
-		return await fn(input, state, ctx);
+	const tool = reg?.[name];
+	if (tool?.execute) {
+		return await tool.execute(input as never, state, ctx);
 	}
 	return stubDelta(name);
 }

@@ -18,9 +18,9 @@ import { resolveTool } from "./tools-bridge.js";
 import type { RingState, StateDelta, TurnRecord } from "./types.js";
 
 export interface TurnResult {
-	turnNumber: number;
-	winner: "order" | "shadow";
-	status: RingState["status"];
+	turn: TurnRecord | null;
+	state: RingState;
+	skipped?: "terminal";
 }
 
 export async function runTurn(ctx: { notion: any }): Promise<TurnResult> {
@@ -32,7 +32,7 @@ export async function runTurn(ctx: { notion: any }): Promise<TurnResult> {
 	// We refuse to advance terminal states.
 	if (state.status !== "active") {
 		console.log(`[handler] game is ${state.status}; ignoring tap`);
-		return { turnNumber: state.turnNumber, winner: "order", status: state.status };
+		return { turn: null, state, skipped: "terminal" };
 	}
 
 	const recent = await readRecentTurns(notion, 3);
@@ -79,5 +79,5 @@ export async function runTurn(ctx: { notion: any }): Promise<TurnResult> {
 		console.log(`[handler] stalemate at turn ${next.turnNumber}; score winner: ${scoreWinner(next)}`);
 	}
 
-	return { turnNumber: next.turnNumber, winner: verdict.winner, status: next.status };
+	return { turn, state: next };
 }

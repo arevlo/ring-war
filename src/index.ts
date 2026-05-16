@@ -40,7 +40,13 @@ worker.webhook("tap", {
 
 		try {
 			const result = await runTurn(ctx);
-			console.log(`[tap] turn ${result.turnNumber} done: winner=${result.winner} status=${result.status}`);
+			if (result.skipped) {
+				console.log(`[tap] skipped: game is ${result.state.status}`);
+			} else if (result.turn) {
+				console.log(
+					`[tap] turn ${result.turn.turn} done: winner=${result.turn.winner} status=${result.state.status}`,
+				);
+			}
 		} catch (err) {
 			console.error("[tap] turn failed:", err);
 			throw err;
@@ -73,7 +79,7 @@ worker.webhook("state", {
 worker.tool("tapTool", {
 	title: "Ring War — Tap",
 	description:
-		"Advance the Ring War by one turn. Runs Order → Shadow → Throne and executes the winner's tool. Returns the new turn number, winner, and status.",
+		"Advance the Ring War by one turn. Runs Order → Shadow → Throne and executes the winner's tool. Returns the completed turn (order/shadow moves and reasoning, throne verdict, integrity/secrecy after) plus the new state. If the game is already terminal (destroyed/exfiltrated/stalemate), returns skipped='terminal' with the current state and no turn.",
 	schema: j.object({}),
 	execute: async (_input, ctx) => {
 		const result = await runTurn(ctx);

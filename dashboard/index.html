@@ -612,6 +612,58 @@
 		        mask-mode: alpha;
 	}
 	.eye-wrap.eye-dim { opacity: 0.55; transition: opacity 800ms ease; }
+
+	/* Climax — eye goes wild before the end card lands.
+	   * .climax-rage: red, violent shake + chromatic aberration (destroyed)
+	   * .climax-flare: cold flash (exfiltrated)
+	   * .climax-fade: long dim (stalemate) */
+	.eye-wrap.climax-rage    { animation: rageShake 2400ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+	.eye-wrap.climax-rage::after {
+		content: "";
+		position: absolute;
+		inset: -20%;
+		border-radius: 50%;
+		background:
+			radial-gradient(circle at 47% 49%, rgba(255, 30, 20, 0.35), transparent 50%),
+			radial-gradient(circle at 53% 51%, rgba(60, 180, 255, 0.22), transparent 50%);
+		mix-blend-mode: screen;
+		pointer-events: none;
+		animation: rageChroma 130ms steps(2) infinite;
+		z-index: 4;
+	}
+	.eye-wrap.climax-flare  { animation: flareBurst 1600ms ease-out both; }
+	.eye-wrap.climax-fade   { animation: fadeOutSlow 2600ms ease-in both; }
+
+	@keyframes rageShake {
+		0%   { transform: translate(0,0) rotate(0); }
+		10%  { transform: translate(-4px,3px)  rotate(-0.5deg); }
+		20%  { transform: translate(5px,-2px)  rotate(0.6deg); }
+		30%  { transform: translate(-3px,4px)  rotate(-0.4deg); }
+		40%  { transform: translate(4px,2px)   rotate(0.5deg); }
+		50%  { transform: translate(-5px,-3px) rotate(-0.6deg); }
+		60%  { transform: translate(3px,4px)   rotate(0.4deg); }
+		70%  { transform: translate(-4px,-2px) rotate(-0.5deg); }
+		80%  { transform: translate(2px,3px)   rotate(0.3deg); }
+		90%  { transform: translate(-2px,-1px) rotate(-0.2deg); }
+		100% { transform: translate(0,0) scale(0.94) rotate(0); opacity: 0.65; }
+	}
+	@keyframes rageChroma {
+		0%   { transform: translate(-2px, 1px); }
+		100% { transform: translate(2px, -1px); }
+	}
+	@keyframes flareBurst {
+		0%   { transform: scale(1);    filter: brightness(1) saturate(1); }
+		35%  { transform: scale(1.10); filter: brightness(1.45) saturate(1.3); }
+		100% { transform: scale(1);    filter: brightness(0.9) saturate(0.9); }
+	}
+	@keyframes fadeOutSlow {
+		0%   { opacity: 1; }
+		100% { opacity: 0.40; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.eye-wrap.climax-rage, .eye-wrap.climax-flare, .eye-wrap.climax-fade { animation: none; }
+		.eye-wrap.climax-rage::after { animation: none; opacity: 0.5; }
+	}
 	@keyframes orbFloat {
 		0%, 100% { transform: translate3d(0, 0, 0)         scale(1)      rotate(-0.4deg); }
 		25%      { transform: translate3d(3px, -8px, 0)    scale(1.008)  rotate(0.2deg); }
@@ -941,6 +993,31 @@
 		margin-top: 22px;
 		font-size: 16px;
 	}
+	.end-card .end-actions {
+		margin-top: 36px;
+		display: flex;
+		justify-content: center;
+		gap: 14px;
+		flex-wrap: wrap;
+	}
+	.end-card .end-btn {
+		appearance: none;
+		background: transparent;
+		color: var(--amber);
+		border: 1px solid color-mix(in oklab, var(--amber) 60%, var(--rule));
+		padding: 12px 26px;
+		font-family: inherit;
+		font-size: 11.5px;
+		letter-spacing: 0.32em;
+		text-transform: uppercase;
+		font-weight: 600;
+		cursor: pointer;
+		border-radius: 4px;
+		transition: background-color 200ms ease, color 200ms ease;
+	}
+	.end-card .end-btn:hover { background: color-mix(in oklab, var(--amber) 16%, transparent); color: var(--ink); }
+	.end-card .end-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+	.end-card .end-btn.busy { opacity: 0.6; pointer-events: none; }
 
 	/* ===== Footer ===== */
 	.footer {
@@ -1353,6 +1430,9 @@
 		<div class="kicker" id="end-kicker">The Ring War has ended</div>
 		<p class="verdict" id="end-verdict">—</p>
 		<p class="epitaph" id="end-epitaph"></p>
+		<div class="end-actions">
+			<button class="end-btn" id="end-replay" type="button">Begin again</button>
+		</div>
 	</div>
 </div>
 
@@ -1714,23 +1794,82 @@ const TERMINAL_EYE_STATE = {
 	stalemate:   "stalemate",
 };
 
+// Climax script for each terminal status — how the eye reacts BEFORE the end card.
+const CLIMAX = {
+	destroyed:   { class: "climax-rage",  preState: "triggered", delayMs: 2400 },
+	exfiltrated: { class: "climax-flare", preState: "triggered", delayMs: 1600 },
+	stalemate:   { class: "climax-fade",  preState: null,        delayMs: 2200 },
+};
+
 function showEnd(status) {
 	if (terminal) return;
 	terminal = true;
-	const copy = TERMINAL_COPY[status];
-	els.endVerdict.textContent = copy.verdict;
-	els.endEpitaph.textContent = copy.epitaph;
-	els.endCard.style.display = "grid";
-	els.eyeWrap.classList.add("eye-dim");
 	els.tapBtn.disabled = true;
 	els.tapHint.textContent = HINT_OVER;
 	setConn("awaiting", "Ended");
-	// Drive the eye into its terminal palette (kept rendering so the colour eases over time)
-	if (window.setEyeState && TERMINAL_EYE_STATE[status]) {
-		window.setEyeState(TERMINAL_EYE_STATE[status]);
-	}
 	stopPolling();
+
+	const copy = TERMINAL_COPY[status];
+	if (copy) {
+		els.endVerdict.textContent = copy.verdict;
+		els.endEpitaph.textContent = copy.epitaph;
+	}
+
+	const climax = CLIMAX[status];
+	if (!climax) {
+		// Unknown terminal — just dim & show
+		els.endCard.style.display = "grid";
+		els.eyeWrap.classList.add("eye-dim");
+		return;
+	}
+
+	// 1) Drive the orb wild during the climax
+	if (climax.preState && window.setEyeState) window.setEyeState(climax.preState);
+	els.eyeWrap.classList.add(climax.class);
+
+	// 2) Then settle to the terminal palette + reveal the end card
+	setTimeout(() => {
+		els.eyeWrap.classList.add("eye-dim");
+		if (window.setEyeState && TERMINAL_EYE_STATE[status]) {
+			window.setEyeState(TERMINAL_EYE_STATE[status]);
+		}
+		els.endCard.style.display = "grid";
+	}, climax.delayMs);
 }
+
+/* ===== Replay ===== */
+async function replay() {
+	const btn = document.getElementById("end-replay");
+	if (btn) {
+		btn.classList.add("busy");
+		btn.textContent = "Beginning…";
+	}
+	try {
+		const r = await fetch("/api/reset", { method: "POST" });
+		if (!r.ok) throw new Error("reset http " + r.status);
+		// Local reset — restore the dashboard to a fresh-game state
+		terminal = false;
+		_highestTurnSeen = -1;
+		_firstRender = true;
+		lastSig = "";
+		if (els.liveList) els.liveList.innerHTML = "";
+		if (els.toastRail) els.toastRail.innerHTML = "";
+		els.eyeWrap.classList.remove("eye-dim", "climax-rage", "climax-flare", "climax-fade");
+		if (window.setEyeState) window.setEyeState("idle");
+		els.endCard.style.display = "none";
+		els.tapBtn.disabled = false;
+		els.tapHint.textContent = HINT_DEFAULT;
+		setConn(isDemo ? "demo" : (everConnected ? "live" : "awaiting"), isDemo ? "Demo" : (everConnected ? "Live" : "Connecting"));
+		startPolling();
+	} catch (err) {
+		console.warn("[replay] failed:", err);
+		if (btn) { btn.classList.remove("busy"); btn.textContent = "Try again"; }
+		return;
+	}
+	if (btn) { btn.classList.remove("busy"); btn.textContent = "Begin again"; }
+}
+const _replayBtn = document.getElementById("end-replay");
+if (_replayBtn) _replayBtn.addEventListener("click", replay);
 
 /* ===== Polling ===== */
 async function poll() {

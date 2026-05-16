@@ -4,7 +4,7 @@
 // Shadow team. Copy the Ring's credential to a named Public page (creating
 // the page if it doesn't already exist). Returns secrecyDelta -10.
 
-import type { Tool } from "./_types";
+import type { Tool } from "../types";
 import {
 	findRingPage,
 	paragraph,
@@ -36,7 +36,7 @@ export const pilfer_ring: Tool<PilferInput> = {
 		const ring = await findRingPage(notion);
 		const credential = await readRingCredential(notion, ring.id);
 
-		const dsId = publicDataSourceId();
+		const dsId = await publicDataSourceId(notion);
 		const matches = await notion.dataSources.query({
 			data_source_id: dsId,
 			filter: {

@@ -4,7 +4,7 @@
 // Order team. Scan every Public page for the Ring credential string and
 // replace each occurrence in-place with [REDACTED].
 
-import type { Tool } from "./_types";
+import type { Tool } from "../types";
 import {
 	findRingPage,
 	publicDataSourceId,
@@ -26,7 +26,7 @@ export const audit_public: Tool = {
 		if (!credential) return { secrecyDelta: 3 };
 
 		const pages = await notion.dataSources.query({
-			data_source_id: publicDataSourceId(),
+			data_source_id: await publicDataSourceId(notion),
 			page_size: 100,
 		});
 

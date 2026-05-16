@@ -3,9 +3,12 @@
 // Test-only helpers: a baseline RingState fixture and a Notion client mock
 // that captures calls so tools can be asserted without hitting the network.
 
-import { vi } from "vitest";
+import { vi, beforeEach } from "vitest";
 import type { Client } from "@notionhq/client";
-import type { RingState, ToolContext } from "../_types";
+import type { RingState, ToolContext } from "../../types";
+import { _clearDataSourceCache } from "../_notion_helpers";
+
+beforeEach(() => _clearDataSourceCache());
 
 export function makeState(overrides: Partial<RingState> = {}): RingState {
 	return {
@@ -61,6 +64,11 @@ export function makeMockNotion(opts: MockOptions = {}) {
 	});
 
 	const notion = {
+		databases: {
+			retrieve: vi.fn(async (args: { database_id: string }) => ({
+				data_sources: [{ id: args.database_id }],
+			})),
+		},
 		dataSources: { query: dataSourcesQuery },
 		pages: {
 			retrieveMarkdown: vi.fn(async (_args: { page_id: string }) => ({

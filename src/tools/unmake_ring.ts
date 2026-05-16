@@ -4,7 +4,7 @@
 // Order team. Ends the war in The Order's favor — but only if the Ring is
 // already in Order's hands and integrity is high enough.
 
-import type { Tool } from "./_types";
+import type { Tool } from "../types";
 
 export const unmake_ring: Tool = {
 	name: "unmake_ring",

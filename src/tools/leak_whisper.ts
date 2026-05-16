@@ -4,7 +4,7 @@
 // Shadow team. Post a comment with rumor_text on a random Public DB page.
 // Returns secrecyDelta -4.
 
-import type { Tool } from "./_types";
+import type { Tool } from "../types";
 import { publicDataSourceId } from "./_notion_helpers";
 
 interface LeakInput {
@@ -28,7 +28,7 @@ export const leak_whisper: Tool<LeakInput> = {
 	},
 	async execute({ rumor_text }, _state, { notion }) {
 		const pages = await notion.dataSources.query({
-			data_source_id: publicDataSourceId(),
+			data_source_id: await publicDataSourceId(notion),
 			page_size: 100,
 		});
 		if (pages.results.length === 0) return { secrecyDelta: -4 };

@@ -1,13 +1,12 @@
 // src/tools/_notion_helpers.ts
 //
 // Local helpers shared by multiple tools in this directory.
-// Promote to `src/notion.ts` (owned by Agent 1) only if Agent 1's handler
-// also needs them — coordinate before moving.
+// Agent 1's src/notion.ts owns state/turn helpers. Once it also exposes a
+// resolveDataSourceId() helper, the resolve logic below should be deleted
+// and we'll import from there instead. Until then, this is self-contained
+// so the tools work whether env vars hold database IDs or data-source IDs.
 
 import type { Client } from "@notionhq/client";
-
-const VAULT_DS_ID = () => requireEnv("VAULT_DB_ID");
-const PUBLIC_DS_ID = () => requireEnv("PUBLIC_DB_ID");
 
 function requireEnv(key: string): string {
 	const v = process.env[key];
@@ -15,12 +14,44 @@ function requireEnv(key: string): string {
 	return v;
 }
 
-export function vaultDataSourceId(): string {
-	return VAULT_DS_ID();
+// Module-scoped cache: env-var raw value → resolved data-source ID.
+// Notion v6's dataSources.query() needs a data-source ID, not a database ID.
+// Env vars in this project (VAULT_DB_ID, PUBLIC_DB_ID, ...) may hold either,
+// depending on how Carlos set them up. Resolve once, cache forever.
+const dataSourceCache = new Map<string, string>();
+
+async function resolveDataSourceId(
+	notion: Client,
+	envValue: string,
+): Promise<string> {
+	const cached = dataSourceCache.get(envValue);
+	if (cached) return cached;
+
+	try {
+		const db = await notion.databases.retrieve({ database_id: envValue });
+		const sources = (db as { data_sources?: Array<{ id: string }> })
+			.data_sources;
+		if (sources && sources.length > 0) {
+			const id = sources[0].id;
+			dataSourceCache.set(envValue, id);
+			return id;
+		}
+	} catch (err) {
+		const code = (err as { code?: string }).code;
+		if (code !== "object_not_found" && code !== "validation_error") throw err;
+		// Fall through — envValue is likely already a data-source ID.
+	}
+
+	dataSourceCache.set(envValue, envValue);
+	return envValue;
 }
 
-export function publicDataSourceId(): string {
-	return PUBLIC_DS_ID();
+export function vaultDataSourceId(notion: Client): Promise<string> {
+	return resolveDataSourceId(notion, requireEnv("VAULT_DB_ID"));
+}
+
+export function publicDataSourceId(notion: Client): Promise<string> {
+	return resolveDataSourceId(notion, requireEnv("PUBLIC_DB_ID"));
 }
 
 /**
@@ -28,8 +59,9 @@ export function publicDataSourceId(): string {
  * containing "Ring". Throws if not found.
  */
 export async function findRingPage(notion: Client): Promise<{ id: string }> {
+	const dsId = await vaultDataSourceId(notion);
 	const res = await notion.dataSources.query({
-		data_source_id: vaultDataSourceId(),
+		data_source_id: dsId,
 		filter: {
 			property: "Name",
 			title: { contains: "Ring" },
@@ -68,4 +100,9 @@ export function paragraph(content: string) {
 			],
 		},
 	};
+}
+
+// Test-only: clear cache between tests so resolve doesn't leak across cases.
+export function _clearDataSourceCache(): void {
+	dataSourceCache.clear();
 }

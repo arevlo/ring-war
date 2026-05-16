@@ -4,7 +4,7 @@
 // Shadow team. Pick a random Vault page that is NOT the Ring page and
 // append a corruption marker. Returns integrityDelta -6.
 
-import type { Tool } from "./_types";
+import type { Tool } from "../types";
 import {
 	findRingPage,
 	paragraph,
@@ -23,7 +23,7 @@ export const corrupt_vault: Tool = {
 	async execute(_input, _state, { notion }) {
 		const ring = await findRingPage(notion);
 		const all = await notion.dataSources.query({
-			data_source_id: vaultDataSourceId(),
+			data_source_id: await vaultDataSourceId(notion),
 			page_size: 100,
 		});
 		const candidates = all.results.filter((p) => p.id !== ring.id);

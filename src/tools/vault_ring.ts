@@ -4,7 +4,7 @@
 // Order team. Pull the Ring back into the Vault. holder = "order",
 // integrityDelta = +8, capAt100 = true.
 
-import type { Tool } from "./_types";
+import type { Tool } from "../types";
 import { findRingPage, paragraph } from "./_notion_helpers";
 
 export const vault_ring: Tool = {

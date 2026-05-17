@@ -80,6 +80,11 @@ export default async function handler(req, res) {
 			integrity: readNumber(sp.Integrity, 100),
 			secrecy: readNumber(sp.Secrecy, 100),
 			turn: readNumber(sp["Turn number"], 0),
+			// Status can be "active", terminal ("destroyed"/"exfiltrated"/
+			// "stalemate"), or transient "summoning" (worker marker set at
+			// the start of a tap so the dashboard's next poll can render
+			// the in-flight UI for NFC/external taps without waiting for
+			// the Turn row to arrive).
 			status: readSelect(sp.Status, "active"),
 		};
 

@@ -8,7 +8,13 @@ import type { Client } from "@notionhq/client";
 
 export type Holder = "order" | "shadow" | "free";
 
-export type GameStatus = "active" | "destroyed" | "exfiltrated" | "stalemate";
+// "summoning" is a transient in-flight marker written by the tap handler at
+// the start of a turn and replaced by the real terminal/active status at the
+// end. It exists so the dashboard can detect "a webhook/NFC tap is being
+// processed" via /api/state polling, without waiting the full 5–15s for the
+// Turn row to appear. Notion's last_edited_time has ~minute precision so it
+// can't carry this signal; a status select value updates instantly.
+export type GameStatus = "active" | "destroyed" | "exfiltrated" | "stalemate" | "summoning";
 
 export type Winner = "order" | "shadow";
 

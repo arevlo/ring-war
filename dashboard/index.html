@@ -2114,6 +2114,11 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	clearSummoningPlaceholder();
 	_isSummoning = false;
 	if (window.setEyeState && !terminal) window.setEyeState("idle");
+	// The verdict is in — re-enable the summon button so the user can
+	// advance to the next turn. Tap-handler intentionally left it disabled
+	// through the whole summoning window so a hyper user couldn't queue
+	// two turns at once.
+	if (!terminal) els.tapBtn.disabled = false;
 	els.tapHint.textContent = HINT_ORDERED;
 	for (const t of fresh.slice().reverse()) {
 		pushLiveCard(t, true);   // stream → staggered chip reveal
@@ -2467,11 +2472,16 @@ els.tapBtn.addEventListener("click", async () => {
 		console.warn("[ring-war] tap failed:", err);
 		els.tapHint.textContent = everConnected ? HINT_DEAF : HINT_AWAITING;
 		_isSummoning = false;
+		// Tap never reached the worker — re-enable so the user can retry.
+		if (!terminal) els.tapBtn.disabled = false;
 		if (everConnected) setConn("awaiting", "Reconnecting");
 	} finally {
 		setTimeout(() => {
 			els.tapBtn.classList.remove("tapping");
-			if (!terminal) els.tapBtn.disabled = false;
+			// NOTE: button intentionally stays disabled here. Re-enable lives
+			// in handleNewTurns once the verdict actually arrives — keeps the
+			// button locked through the entire summoning window so the user
+			// can't double-tap and stack overlapping turns.
 			// Hand off from the sharp "triggered" red flash to the sustained
 			// "summoning" red breath — only if a tap actually fired. The
 			// summoning state holds until handleNewTurns sees fresh turns or
@@ -3384,9 +3394,13 @@ if (canvas) {
 		uniforms.uTime.value = reducedMotion ? 0 : t;
 		haloUniforms.uTime.value = uniforms.uTime.value;
 
-		// Halo colour: green by default, shifts warm-red on triggered state.
+		// Halo colour: green by default, shifts warm-red on triggered AND
+		// summoning state. `triggered` is the sharp 1.1s flash on tap;
+		// `summoning` is the sustained breath while the worker churns —
+		// both want the alarm red, otherwise the halo stays green during
+		// the long thinking window and undersells the urgency.
 		const eyeState = document.documentElement.dataset.eyeState || "idle";
-		const triggered = eyeState === "triggered";
+		const triggered = eyeState === "triggered" || eyeState === "summoning";
 		const haloTarget = triggered
 			? [0.95, 0.22, 0.10]   // alarm red-orange (less pumped — leave room for bolts)
 			: eyeState === "exfiltrated"

@@ -1,5 +1,7 @@
 # Ring War
 
+https://www.notion.so/tdfsolrac/Ring-War-3628b6b1991680e6beb7cbcb0c85aa5f?source=copy_link
+
 > Two AI agent teams fighting over a single credential — and the only way to advance the game is to tap the Ring.
 
 Ring War is a turn-based capture-the-flag game between two AI agent teams (**The Order** and **The Shadow**), triggered by an NFC ring tap. Every tap fires three sequential Claude calls — Order moves, Shadow moves, the Throne judges — and only the winner's tool runs against Notion. State, history, and the public-facing world all live inside Notion databases. The dashboard is a thin Vercel-hosted view that polls a `/api/state` endpoint every 2 seconds.

@@ -2576,17 +2576,46 @@ const AUDIO = (() => {
 		}
 		return ambient;
 	}
+	// startAmbient tries the ideal path first (unmuted autoplay). If the
+	// browser blocks that (the common case on page load with no gesture),
+	// it falls back to muted autoplay — browsers DO allow that — so the
+	// track is already rolling silently by the time the user interacts.
+	// queueIntroOnInteraction calls startAmbient again on first gesture;
+	// the call below detects an already-playing-muted track and just flips
+	// `muted = false` so the user hears the loop instantly without it
+	// restarting from t=0 (which would feel jarring).
 	async function startAmbient() {
 		if (!enabled) return;
 		const a = getAmbient();
-		if (!a.paused && ambientStarted) return;
+		// Already audibly playing — nothing to do.
+		if (!a.paused && ambientStarted && !a.muted) return;
+		// Already rolling muted — first gesture is here, just unmute.
+		if (!a.paused && ambientStarted && a.muted) {
+			a.muted = false;
+			a.volume = AMBIENT_VOLUME_PLAYING;
+			return;
+		}
+		// Ideal path: unmuted autoplay (works if sticky activation is on).
 		try {
+			a.muted = false;
+			a.volume = AMBIENT_VOLUME_PLAYING;
+			await a.play();
+			ambientStarted = true;
+			return;
+		} catch (e) {
+			// Fall through to the muted-autoplay fallback below.
+		}
+		// Fallback: muted autoplay. Browsers permit this even without a
+		// gesture, so the audio element starts buffering and ticking time;
+		// the first user click unmutes it (via the next call to this fn).
+		try {
+			a.muted = true;
 			a.volume = AMBIENT_VOLUME_PLAYING;
 			await a.play();
 			ambientStarted = true;
 		} catch (e) {
-			// Autoplay block — will retry on next user gesture via the existing
-			// queueIntroOnInteraction listener (which also calls startAmbient).
+			// Both paths blocked (very strict policy). queueIntroOnInteraction
+			// will catch the next gesture and try again.
 		}
 	}
 	function stopAmbient() {

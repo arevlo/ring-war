@@ -1781,36 +1781,22 @@ const els = {
 	utStack:        $("ut-stack"),
 };
 
-/* ===== Per-tool act clip mapping — canonical text matches audio =====
-   Source: Notion "TTS — Voices & Delivery" doc (3628b6b1991681baa46af491c950488e).
-   Every Order/Shadow tool has a dedicated MP3; on-screen text mirrors the
-   recording so the spoken voice and the panel never drift. */
-const ACT_CLIPS = {
-	"order-act-1.mp3": { speaker: "order",  text: "The Vault holds. Patience is the shield." },
-	"order-act-2.mp3": { speaker: "order",  text: "The Ring rests in my hands; the war is not yet earned its end." },
-	"order-act-3.mp3": { speaker: "order",  text: "The unmaking is earned." },
-	"shadow-act-1.mp3":{ speaker: "shadow", text: "A wound left unattended festers." },
-	"shadow-act-2.mp3":{ speaker: "shadow", text: "Doubt seeps through the cracks before the walls know they are falling." },
-	"shadow-act-3.mp3":{ speaker: "shadow", text: "The secret is in the world now. You cannot un-tell a story." },
-};
-// One clip per tool. Variety comes from variety of plays, not randomness.
-const TOOL_TO_ACT = {
-	vault_ring:    "order-act-1.mp3",
-	audit_public:  "order-act-2.mp3",
-	unmake_ring:   "order-act-3.mp3",
-	corrupt_vault: "shadow-act-1.mp3",
-	leak_whisper:  "shadow-act-2.mp3",
-	pilfer_ring:   "shadow-act-3.mp3",
-};
+// Speaker labels for the utterance panel. The three voices share one card
+// that cycles per turn: Order's reasoning → Shadow's reasoning → Throne's
+// canonical verdict (with audio). Only the Throne speaks audibly; Order and
+// Shadow are shown silently so the demo audience reads what each side argued
+// before the Throne weighs in.
+//
+// The Order/Shadow text comes from Claude's per-turn `reasoning` field —
+// dynamic content, different every turn. The Throne text comes from the
+// canonical THRONE_CLIPS table (with `pickThroneAlt` shuffling among
+// recorded variants) so its on-screen line always matches its audio.
+//
+// (The recorded `order-act-*.mp3` and `shadow-act-*.mp3` files still exist
+// in dashboard/audio/ and are documented in the Notion TTS doc, but are no
+// longer chained into the per-turn sequence — the user asked for one voice
+// per round (Throne) to keep the pace clean.)
 const SPEAKER_NAME = { order: "The Order", shadow: "The Shadow", throne: "The Throne" };
-
-function clipForMove(move) {
-	const file = TOOL_TO_ACT[move];
-	if (!file) return null;
-	const meta = ACT_CLIPS[file];
-	if (!meta) return null;
-	return { file, ...meta, move };
-}
 
 /* ===== Single-panel utterance machinery =====
    pushUtterance animates the current message out and a new one in. Uses the
@@ -1896,38 +1882,54 @@ function setIdleUtterance(state) {
 	pushUtterance("throne", "", line);
 }
 
-// pickTurnAudio derives the winner's act clip + the Throne verdict clip from a
-// turn record. Both carry the canonical text that pairs 1:1 with the recorded
-// MP3 — same words on screen as in the speakers.
-function pickTurnAudio(turn, state) {
+// pickTurnNarrative builds the three on-screen beats from a turn record.
+// Order and Shadow carry Claude's dynamic reasoning text for that turn
+// (silent — narrative texture, no audio). Only the Throne beat has a clip:
+// canonical text pinned to the recorded MP3 via THRONE_CLIPS / pickThroneAlt.
+function pickTurnNarrative(turn, state) {
 	const winner = (turn && turn.throne && turn.throne.winner) || "";
-	const winnerSide = winner === "order" ? (turn.order || {}) : winner === "shadow" ? (turn.shadow || {}) : {};
-	const act = clipForMove(winnerSide.move);
+	const order  = turn.order  || {};
+	const shadow = turn.shadow || {};
 	const throneClip = pickThroneClip(turn, state);   // {file, text} or null
 	const throneMeta = `Turn ${turn.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
-	const throne = {
-		file: throneClip ? throneClip.file : null,
-		speaker: "throne",
-		text: (throneClip && throneClip.text) || (turn.throne && turn.throne.reasoning) || "—",
-		meta: throneMeta,
+	return {
+		order: {
+			speaker: "order",
+			meta: order.move ? prettyMove(order.move) : "",
+			text: (order.reasoning || "").trim() || "—",
+		},
+		shadow: {
+			speaker: "shadow",
+			meta: shadow.move ? prettyMove(shadow.move) : "",
+			text: (shadow.reasoning || "").trim() || "—",
+		},
+		throne: {
+			file: throneClip ? throneClip.file : null,
+			speaker: "throne",
+			text: (throneClip && throneClip.text) || (turn.throne && turn.throne.reasoning) || "—",
+			meta: throneMeta,
+		},
+		winner,
 	};
-	return { act, throne, winner };
 }
 
-// emitTurnVoices runs the single-panel cycle: winner act → Throne verdict.
-// Pushes are timed against the audio when enabled, fixed-delay when muted.
+// emitTurnVoices runs the three-beat narrative cycle:
+//   Order's reasoning (silent) → Shadow's reasoning (silent) → Throne verdict (audio).
+// Only the Throne beat plays audio — the user asked for one voice per round.
 function emitTurnVoices(t, state, opts) {
 	const stagger = (opts && opts.stagger !== false);
-	const picks = pickTurnAudio(t, state);
+	const picks = pickTurnNarrative(t, state);
 	if (!stagger) {
-		// First-render of a pre-existing game: jump straight to the final verdict.
+		// First-render of a pre-existing game: jump straight to the verdict.
 		pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
 		return;
 	}
 	AUDIO.playTurn(picks, {
 		onBeat: (beat) => {
-			if (beat.kind === "act" && picks.act) {
-				pushUtterance(picks.act.speaker, prettyMove(picks.act.move), picks.act.text);
+			if (beat.kind === "order") {
+				pushUtterance(picks.order.speaker, picks.order.meta, picks.order.text);
+			} else if (beat.kind === "shadow") {
+				pushUtterance(picks.shadow.speaker, picks.shadow.meta, picks.shadow.text);
 			} else if (beat.kind === "throne") {
 				pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
 			}
@@ -2433,8 +2435,9 @@ const CLIP_DURATIONS_MS = {
 	"throne-wound-2.mp3":    5400,
 	"throne-wound-3.mp3":    5600,
 };
-const BEAT_GAP_MS = 400;     // silence between consecutive clips
-const SILENT_BEAT_MS = 2800; // when voice is muted, hold the on-screen beat
+const BEAT_GAP_MS = 400;     // silence between consecutive clips (legacy: throne-only audio now)
+const SILENT_BEAT_MS = 2800; // when voice is muted, hold the on-screen Throne beat for this long
+const READ_BEAT_MS = 3500;   // how long Order/Shadow silent beats hold on-screen before advancing
 
 const AUDIO = (() => {
 	const cache = {};
@@ -2492,12 +2495,21 @@ const AUDIO = (() => {
 		});
 	}
 
-	// playTurn — owns both audio playback AND the on-screen beat callbacks.
-	// Every act + throne pair is fully sequential: at most one clip plays at
-	// any moment, with BEAT_GAP_MS silence between them.
+	// playTurn — owns BOTH on-screen beat callbacks and audio playback.
 	//
-	// picks = { act: {file, speaker, text, move} | null, throne: {file, speaker, text, meta} }
-	// opts  = { onBeat: ({kind:"act"|"throne", clip}) => void }
+	// Three sequential beats per turn:
+	//   1. Order  (silent)  — Claude's reasoning for The Order's move
+	//   2. Shadow (silent)  — Claude's reasoning for The Shadow's move
+	//   3. Throne (audio)   — canonical verdict + matching MP3
+	//
+	// Only the Throne speaks. Order and Shadow are shown silently for a fixed
+	// READ_BEAT_MS so the audience can read each side's thinking before the
+	// Throne weighs in. If audio is muted the Throne beat falls through to a
+	// SILENT_BEAT_MS hold so the visual cadence stays the same.
+	//
+	// picks = { order: {speaker,meta,text}, shadow: {speaker,meta,text},
+	//           throne: {file,speaker,text,meta} }
+	// opts  = { onBeat: ({kind:"order"|"shadow"|"throne", clip}) => void }
 	function playTurn(picks, opts) {
 		if (!picks) return;
 		const onBeat = (opts && opts.onBeat) || (() => {});
@@ -2506,22 +2518,24 @@ const AUDIO = (() => {
 		// turn audio, or any leftovers from a previous chain.
 		stopAll();
 		(async () => {
-			if (picks.act) {
+			if (picks.order) {
 				if (mySeq !== seq) return;
-				onBeat({ kind: "act", clip: picks.act });
-				if (enabled && picks.act.file) {
-					await playOne(picks.act.file, mySeq);
-				} else {
-					await new Promise((r) => setTimeout(r, SILENT_BEAT_MS));
-				}
+				onBeat({ kind: "order", clip: picks.order });
+				await new Promise((r) => setTimeout(r, READ_BEAT_MS));
 				if (mySeq !== seq) return;
-				await new Promise((r) => setTimeout(r, BEAT_GAP_MS));
+			}
+			if (picks.shadow) {
+				if (mySeq !== seq) return;
+				onBeat({ kind: "shadow", clip: picks.shadow });
+				await new Promise((r) => setTimeout(r, READ_BEAT_MS));
 				if (mySeq !== seq) return;
 			}
 			if (mySeq !== seq) return;
 			onBeat({ kind: "throne", clip: picks.throne });
 			if (enabled && picks.throne && picks.throne.file) {
 				await playOne(picks.throne.file, mySeq);
+			} else {
+				await new Promise((r) => setTimeout(r, SILENT_BEAT_MS));
 			}
 		})();
 	}

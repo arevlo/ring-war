@@ -816,8 +816,8 @@
 	.utterance {
 		width: 100%;
 		text-align: center;
-		padding: 14px 24px 16px;
-		border-radius: 14px;
+		padding: 10px 22px 12px;
+		border-radius: 12px;
 		background:
 			linear-gradient(180deg,
 				color-mix(in oklab, var(--surface)   84%, transparent),
@@ -837,10 +837,12 @@
 	.utterance[data-speaker="shadow"] { border-color: color-mix(in oklab, var(--shadow) 45%, var(--rule-strong)); }
 	.utterance[data-speaker="throne"] { border-color: color-mix(in oklab, var(--throne) 45%, var(--rule-strong)); }
 
-	/* Stack: messages overlap during the cross-fade, then settle. */
+	/* Stack: messages overlap during the cross-fade, then settle. Min-height
+	   sized for a single line of action copy; Throne verdicts that wrap to
+	   two lines auto-grow the panel. Keeps Order/Shadow beats compact. */
 	.ut-stack {
 		position: relative;
-		min-height: 5.2em;
+		min-height: 2.4em;
 	}
 	.ut-msg {
 		display: block;
@@ -852,11 +854,11 @@
 		display: inline-flex;
 		align-items: baseline;
 		gap: 10px;
-		font-size: 10px;
+		font-size: 9.5px;
 		letter-spacing: 0.32em;
 		text-transform: uppercase;
 		font-weight: 700;
-		margin-bottom: 8px;
+		margin-bottom: 4px;
 	}
 	.ut-msg.order  .ut-speaker { color: var(--order); }
 	.ut-msg.shadow .ut-speaker { color: var(--shadow); }
@@ -874,8 +876,8 @@
 	.ut-msg .ut-text {
 		font-family: "Fraunces", Georgia, serif;
 		font-style: italic;
-		font-size: clamp(15px, 1.55vw, 18px);
-		line-height: 1.45;
+		font-size: clamp(14px, 1.4vw, 17px);
+		line-height: 1.4;
 		color: var(--ink);
 		margin: 0;
 	}
@@ -1882,10 +1884,26 @@ function setIdleUtterance(state) {
 	pushUtterance("throne", "", line);
 }
 
+// One-line action sentence per tool. Reads as plain reportage of what just
+// happened — no metaphor, no rumination. Order/Shadow beats are silent and
+// stay terse so the panel stays short; only the Throne speaks at length.
+const MOVE_ACTIONS = {
+	vault_ring:    "Pulls the Ring into the Vault.",
+	audit_public:  "Scrubs the public realm.",
+	unmake_ring:   "Moves to unmake the Ring.",
+	pilfer_ring:   "Pilfers the Ring's secret.",
+	corrupt_vault: "Corrupts the Vault.",
+	leak_whisper:  "Leaks a whisper.",
+};
+function actionFor(move) {
+	if (!move) return "—";
+	return MOVE_ACTIONS[move] || prettyMove(move) + ".";
+}
+
 // pickTurnNarrative builds the three on-screen beats from a turn record.
-// Order and Shadow carry Claude's dynamic reasoning text for that turn
-// (silent — narrative texture, no audio). Only the Throne beat has a clip:
-// canonical text pinned to the recorded MP3 via THRONE_CLIPS / pickThroneAlt.
+// Order and Shadow carry a one-line action sentence keyed to the tool they
+// played (silent — no audio). Only the Throne beat has a clip: canonical
+// text pinned to the recorded MP3 via THRONE_CLIPS / pickThroneAlt.
 function pickTurnNarrative(turn, state) {
 	const winner = (turn && turn.throne && turn.throne.winner) || "";
 	const order  = turn.order  || {};
@@ -1895,13 +1913,13 @@ function pickTurnNarrative(turn, state) {
 	return {
 		order: {
 			speaker: "order",
-			meta: order.move ? prettyMove(order.move) : "",
-			text: (order.reasoning || "").trim() || "—",
+			meta: "",
+			text: actionFor(order.move),
 		},
 		shadow: {
 			speaker: "shadow",
-			meta: shadow.move ? prettyMove(shadow.move) : "",
-			text: (shadow.reasoning || "").trim() || "—",
+			meta: "",
+			text: actionFor(shadow.move),
 		},
 		throne: {
 			file: throneClip ? throneClip.file : null,

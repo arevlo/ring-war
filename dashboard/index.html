@@ -802,18 +802,21 @@
 		100% { transform: translateY(0);    opacity: 1; }
 	}
 
-	/* ===== Three-voice utterance stack: Order, Shadow, Throne ===== */
+	/* ===== Single-panel utterance with cycling speaker ===== */
+	/* One card; per turn, three messages push through it:
+	   the winner's canonical act line, then the Throne's canonical verdict.
+	   The card border accents to the active speaker's color while they speak. */
 	.utterances {
 		display: flex;
-		flex-direction: column;
-		gap: 18px;
+		justify-content: center;
 		width: 100%;
 		max-width: min(720px, 92vw);
 		margin: 0 auto 6px;
 	}
 	.utterance {
+		width: 100%;
 		text-align: center;
-		padding: 12px 22px 14px;
+		padding: 14px 24px 16px;
 		border-radius: 14px;
 		background:
 			linear-gradient(180deg,
@@ -825,22 +828,40 @@
 		box-shadow:
 			inset 0 1px 0 rgba(255,255,255,0.10),
 			0 10px 28px rgba(0,0,0,0.28);
-		transition: opacity 320ms ease, transform 320ms cubic-bezier(0.34, 1.06, 0.64, 1);
+		transition:
+			border-color 400ms ease,
+			box-shadow 400ms ease;
 	}
-	.utterance .ut-label {
+	/* Border accent follows the active speaker. */
+	.utterance[data-speaker="order"]  { border-color: color-mix(in oklab, var(--order)  45%, var(--rule-strong)); }
+	.utterance[data-speaker="shadow"] { border-color: color-mix(in oklab, var(--shadow) 45%, var(--rule-strong)); }
+	.utterance[data-speaker="throne"] { border-color: color-mix(in oklab, var(--throne) 45%, var(--rule-strong)); }
+
+	/* Stack: messages overlap during the cross-fade, then settle. */
+	.ut-stack {
+		position: relative;
+		min-height: 5.2em;
+	}
+	.ut-msg {
+		display: block;
+		transition:
+			opacity 520ms ease,
+			transform 520ms cubic-bezier(0.34, 1.06, 0.64, 1);
+	}
+	.ut-msg .ut-label {
 		display: inline-flex;
-		align-items: center;
-		gap: 8px;
+		align-items: baseline;
+		gap: 10px;
 		font-size: 10px;
 		letter-spacing: 0.32em;
 		text-transform: uppercase;
 		font-weight: 700;
-		margin-bottom: 6px;
+		margin-bottom: 8px;
 	}
-	.utterance.order  .ut-label { color: var(--order); }
-	.utterance.shadow .ut-label { color: var(--shadow); }
-	.utterance .ut-label .ut-turn,
-	.utterance .ut-label .ut-move {
+	.ut-msg.order  .ut-speaker { color: var(--order); }
+	.ut-msg.shadow .ut-speaker { color: var(--shadow); }
+	.ut-msg.throne .ut-speaker { color: var(--throne); }
+	.ut-msg .ut-meta {
 		color: var(--ink-soft);
 		font-family: "Fraunces", Georgia, serif;
 		font-style: italic;
@@ -848,52 +869,29 @@
 		font-size: 11px;
 		letter-spacing: 0.04em;
 		text-transform: none;
-	}
-	.utterance .ut-label .ut-move {
 		opacity: 0.85;
 	}
-	.utterance .ut-text {
+	.ut-msg .ut-text {
 		font-family: "Fraunces", Georgia, serif;
 		font-style: italic;
-		font-size: clamp(14px, 1.45vw, 17px);
+		font-size: clamp(15px, 1.55vw, 18px);
 		line-height: 1.45;
 		color: var(--ink);
 		margin: 0;
 	}
-	/* Stacked-message animation: new text fades in from below, old slides up + out. */
-	.ut-stack {
-		position: relative;
-		min-height: 2.6em;
-	}
-	.ut-stack .ut-text {
-		display: block;
-		transition:
-			opacity 520ms ease,
-			transform 520ms cubic-bezier(0.34, 1.06, 0.64, 1);
-	}
-	.ut-stack .ut-text.is-leaving {
+	.ut-stack .ut-msg.is-leaving {
 		position: absolute;
 		left: 0; right: 0; top: 0;
 		opacity: 0;
 		transform: translateY(-22px);
 		pointer-events: none;
 	}
-	.ut-stack .ut-text.is-entering {
+	.ut-stack .ut-msg.is-entering {
 		opacity: 0;
 		transform: translateY(14px);
 	}
-	/* Subtle just-spoke flourish so the eye lands on whichever voice just changed. */
-	.utterance.is-speaking {
-		transform: translateY(-1px);
-		box-shadow:
-			inset 0 1px 0 rgba(255,255,255,0.16),
-			0 14px 36px rgba(0,0,0,0.36);
-	}
-	.utterance.order.is-speaking  { border-color: color-mix(in oklab, var(--order)  55%, var(--rule-strong)); }
-	.utterance.shadow.is-speaking { border-color: color-mix(in oklab, var(--shadow) 55%, var(--rule-strong)); }
-	.utterance.throne.is-speaking { border-color: color-mix(in oklab, var(--throne) 55%, var(--rule-strong)); }
 	@media (prefers-reduced-motion: reduce) {
-		.ut-stack .ut-text,
+		.ut-msg,
 		.utterance { transition: none; }
 	}
 
@@ -1557,32 +1555,16 @@
 			<div class="orb-shadow"></div>
 		</div>
 
-		<aside class="utterances" id="utterances" aria-label="Voices of the turn">
-			<article class="utterance order" id="ut-order" aria-live="polite">
-				<div class="ut-label">
-					<span>The Order</span>
-					<span class="ut-move" id="ut-order-move"></span>
-				</div>
-				<div class="ut-stack" id="ut-order-stack">
-					<p class="ut-text">The Order keeps its counsel.</p>
-				</div>
-			</article>
-			<article class="utterance shadow" id="ut-shadow" aria-live="polite">
-				<div class="ut-label">
-					<span>The Shadow</span>
-					<span class="ut-move" id="ut-shadow-move"></span>
-				</div>
-				<div class="ut-stack" id="ut-shadow-stack">
-					<p class="ut-text">The Shadow is silent.</p>
-				</div>
-			</article>
-			<article class="utterance throne throne-utterance" id="throne-utterance" aria-live="polite">
-				<div class="ut-label">
-					<span>The Throne</span>
-					<span class="ut-turn" id="ut-turn"></span>
-				</div>
-				<div class="ut-stack" id="ut-throne-stack">
-					<p class="ut-text" id="ut-text">The Ring waits.</p>
+		<aside class="utterances" id="utterances" aria-label="Voice of the turn">
+			<article class="utterance throne-utterance" id="throne-utterance" aria-live="polite" data-speaker="throne">
+				<div class="ut-stack" id="ut-stack">
+					<div class="ut-msg throne">
+						<div class="ut-label">
+							<span class="ut-speaker">The Throne</span>
+							<span class="ut-meta"></span>
+						</div>
+						<p class="ut-text">The Ring waits.</p>
+					</div>
 				</div>
 			</article>
 		</aside>
@@ -1661,13 +1643,44 @@ const POLL_MS = 2000;
 // MP3 transcripts in dashboard/audio/ (Notion: TTS — Voices & Delivery, §3).
 // Both the audio picker and the on-screen Throne text resolve through here so
 // the spoken voice and the screen never drift apart.
+//
+// `defend` and `wound` recur every Order/Shadow win across a 5–8 turn game,
+// so they carry multiple recorded variants. The picker shuffles among them
+// and avoids the most recently played variant within the current game so the
+// Throne never says the same line two turns in a row. The terminal verdicts
+// (unmake, exfiltrate, stalemate) fire once per game and don't need variants.
 const THRONE_CLIPS = {
-	defend:     { file: "throne-defend.mp3",     text: "The Vault holds; the Shadow's whisper dies before it can find a mouth." },
-	wound:      { file: "throne-wound.mp3",      text: "A crack runs through the Vault tonight. Stone remembers; the war will too." },
-	unmake:     { file: "throne-unmake.mp3",     text: "The Ring is unmade. What neither side could keep, the Order has ended." },
-	exfiltrate: { file: "throne-exfiltrate.mp3", text: "The Ring slips its keepers; the seal was sound, but the thief was patient." },
-	stalemate:  { file: "throne-stalemate.mp3", text: "Ten turns, no victor. The Ring abides — and so does the silence around it." },
+	defend: [
+		{ file: "throne-defend.mp3",   text: "The Vault holds; the Shadow's whisper dies before it can find a mouth." },
+		{ file: "throne-defend-2.mp3", text: "The wall stands; the Shadow withdraws to the dark it came from." },
+		{ file: "throne-defend-3.mp3", text: "Stone outlasts every patient hand. Tonight, again, the Vault remembers how to be still." },
+	],
+	wound: [
+		{ file: "throne-wound.mp3",    text: "A crack runs through the Vault tonight. Stone remembers; the war will too." },
+		{ file: "throne-wound-2.mp3",  text: "Another seam in the Vault; the night listens, the night learns." },
+		{ file: "throne-wound-3.mp3",  text: "The Shadow draws a line through the Vault. Stone bears it, and waits." },
+	],
+	unmake:     [{ file: "throne-unmake.mp3",     text: "The Ring is unmade. What neither side could keep, the Order has ended." }],
+	exfiltrate: [{ file: "throne-exfiltrate.mp3", text: "The Ring slips its keepers; the seal was sound, but the thief was patient." }],
+	stalemate:  [{ file: "throne-stalemate.mp3", text: "Ten turns, no victor. The Ring abides — and so does the silence around it." }],
 };
+
+const _lastThroneAltIdx = {};   // key → index of last variant played this session
+function pickThroneAlt(key) {
+	const variants = THRONE_CLIPS[key];
+	if (!variants || variants.length === 0) return null;
+	if (variants.length === 1) return variants[0];
+	const last = _lastThroneAltIdx[key];
+	const choices = [];
+	for (let i = 0; i < variants.length; i++) if (i !== last) choices.push(i);
+	const idx = choices[Math.floor(Math.random() * choices.length)];
+	_lastThroneAltIdx[key] = idx;
+	return variants[idx];
+}
+function resetThroneAltMemory() {
+	for (const k of Object.keys(_lastThroneAltIdx)) delete _lastThroneAltIdx[k];
+}
+
 // The payload state reflects the CURRENT game; older chronicle turns were
 // active by definition. Only the latest turn can carry a terminal status.
 function statusForTurn(t, state) {
@@ -1678,12 +1691,12 @@ function statusForTurn(t, state) {
 function pickThroneClip(turn, state) {
 	const winner = (turn && turn.throne && turn.throne.winner) || "";
 	const status = statusForTurn(turn, state);
-	if (status === "destroyed"   && winner === "order")  return THRONE_CLIPS.unmake;
-	if (status === "destroyed"   && winner === "shadow") return THRONE_CLIPS.wound;
-	if (status === "exfiltrated")                        return THRONE_CLIPS.exfiltrate;
-	if (status === "stalemate")                          return THRONE_CLIPS.stalemate;
-	if (winner === "order")                              return THRONE_CLIPS.defend;
-	if (winner === "shadow")                             return THRONE_CLIPS.wound;
+	if (status === "destroyed"   && winner === "order")  return pickThroneAlt("unmake");
+	if (status === "destroyed"   && winner === "shadow") return pickThroneAlt("wound");
+	if (status === "exfiltrated")                        return pickThroneAlt("exfiltrate");
+	if (status === "stalemate")                          return pickThroneAlt("stalemate");
+	if (winner === "order")                              return pickThroneAlt("defend");
+	if (winner === "shadow")                             return pickThroneAlt("wound");
 	return null;
 }
 function throneLine(turn, state) { return (pickThroneClip(turn, state) || {}).text || ""; }
@@ -1764,48 +1777,74 @@ const els = {
 	connLabel:      $("conn-label"),
 	liveList:       $("live-list"),
 	liveCount:      $("live-count"),
-	utOrder:        $("ut-order"),
-	utShadow:       $("ut-shadow"),
-	utThrone:       $("throne-utterance"),
-	utOrderStack:   $("ut-order-stack"),
-	utShadowStack:  $("ut-shadow-stack"),
-	utThroneStack:  $("ut-throne-stack"),
-	utOrderMove:    $("ut-order-move"),
-	utShadowMove:   $("ut-shadow-move"),
+	utterance:      $("throne-utterance"),
+	utStack:        $("ut-stack"),
 };
 
-/* ===== Three-voice utterance machinery ===== */
-// pushUtteranceText animates the current line out and the new one in. It uses
-// only the most-recently-visible <p> to compare so repeated equal pushes no-op.
-function pushUtteranceText(stackEl, text) {
-	if (!stackEl) return;
-	const next = (text == null ? "" : String(text)).trim() || "—";
-	const live = stackEl.querySelector(".ut-text:not(.is-leaving)");
-	if (live && live.textContent === next) return;
+/* ===== Per-tool act clip mapping — canonical text matches audio =====
+   Source: Notion "TTS — Voices & Delivery" doc (3628b6b1991681baa46af491c950488e).
+   Every Order/Shadow tool has a dedicated MP3; on-screen text mirrors the
+   recording so the spoken voice and the panel never drift. */
+const ACT_CLIPS = {
+	"order-act-1.mp3": { speaker: "order",  text: "The Vault holds. Patience is the shield." },
+	"order-act-2.mp3": { speaker: "order",  text: "The Ring rests in my hands; the war is not yet earned its end." },
+	"order-act-3.mp3": { speaker: "order",  text: "The unmaking is earned." },
+	"shadow-act-1.mp3":{ speaker: "shadow", text: "A wound left unattended festers." },
+	"shadow-act-2.mp3":{ speaker: "shadow", text: "Doubt seeps through the cracks before the walls know they are falling." },
+	"shadow-act-3.mp3":{ speaker: "shadow", text: "The secret is in the world now. You cannot un-tell a story." },
+};
+// One clip per tool. Variety comes from variety of plays, not randomness.
+const TOOL_TO_ACT = {
+	vault_ring:    "order-act-1.mp3",
+	audit_public:  "order-act-2.mp3",
+	unmake_ring:   "order-act-3.mp3",
+	corrupt_vault: "shadow-act-1.mp3",
+	leak_whisper:  "shadow-act-2.mp3",
+	pilfer_ring:   "shadow-act-3.mp3",
+};
+const SPEAKER_NAME = { order: "The Order", shadow: "The Shadow", throne: "The Throne" };
+
+function clipForMove(move) {
+	const file = TOOL_TO_ACT[move];
+	if (!file) return null;
+	const meta = ACT_CLIPS[file];
+	if (!meta) return null;
+	return { file, ...meta, move };
+}
+
+/* ===== Single-panel utterance machinery =====
+   pushUtterance animates the current message out and a new one in. Uses the
+   most-recently-visible .ut-msg to compare so repeated identical pushes no-op. */
+function pushUtterance(speaker, meta, text) {
+	const stack = els.utStack;
+	const card  = els.utterance;
+	if (!stack) return;
+	const safeText = (text == null ? "" : String(text)).trim() || "—";
+	const live = stack.querySelector(".ut-msg:not(.is-leaving)");
+	if (live && live.dataset.speaker === speaker && live.dataset.text === safeText) return;
 	if (live) {
 		live.classList.add("is-leaving");
 		setTimeout(() => { if (live.isConnected) live.remove(); }, 620);
 	}
-	const fresh = document.createElement("p");
-	fresh.className = "ut-text is-entering";
-	fresh.textContent = next;
-	stackEl.appendChild(fresh);
-	// Force layout, then drop the entering class so the transition fires.
+	const fresh = document.createElement("div");
+	fresh.className = `ut-msg ${speaker} is-entering`;
+	fresh.dataset.speaker = speaker;
+	fresh.dataset.text = safeText;
+	fresh.innerHTML = `
+		<div class="ut-label">
+			<span class="ut-speaker">${escapeHTML(SPEAKER_NAME[speaker] || speaker)}</span>
+			${meta ? `<span class="ut-meta">${escapeHTML(meta)}</span>` : ""}
+		</div>
+		<p class="ut-text">${escapeHTML(safeText)}</p>
+	`;
+	stack.appendChild(fresh);
+	if (card) card.dataset.speaker = speaker;
 	void fresh.offsetWidth;
 	requestAnimationFrame(() => fresh.classList.remove("is-entering"));
 }
 
-function flashSpeaking(utteranceEl) {
-	if (!utteranceEl) return;
-	utteranceEl.classList.remove("is-speaking");
-	void utteranceEl.offsetWidth;
-	utteranceEl.classList.add("is-speaking");
-	setTimeout(() => utteranceEl.classList.remove("is-speaking"), 1400);
-}
-
 function reasoningFor(side) {
-	const s = side || {};
-	return (s.reasoning || "").trim();
+	return ((side && side.reasoning) || "").trim();
 }
 function moveLabel(side) {
 	const m = (side && side.move) || "";
@@ -1848,51 +1887,52 @@ function pushLiveCard(t, stream) {
 	}, ttl);
 }
 
-function updateThroneUtterance(t, state) {
-	const root = els.utThrone;
-	const turnEl = document.getElementById("ut-turn");
-	if (!root) return;
-	if (!t) {
-		// no turns yet — idle copy reflects state
-		let line = "The Ring waits.";
-		if (state && state.status && state.status !== "active" && TERMINAL_COPY[state.status]) {
-			line = TERMINAL_COPY[state.status].verdict;
-		}
-		pushUtteranceText(els.utThroneStack, line);
-		root.removeAttribute("data-winner");
-		if (turnEl) turnEl.textContent = "";
-		return;
+// setIdleUtterance — single message for no-turn / between-game states.
+function setIdleUtterance(state) {
+	let line = "The Ring waits.";
+	if (state && state.status && state.status !== "active" && TERMINAL_COPY[state.status]) {
+		line = TERMINAL_COPY[state.status].verdict;
 	}
-	const winner = (t.throne && t.throne.winner) || "";
-	pushUtteranceText(els.utThroneStack, throneLine(t, state) || (t.throne && t.throne.reasoning) || "—");
-	root.setAttribute("data-winner", winner);
-	if (turnEl) turnEl.textContent = `Turn ${t.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
-	flashSpeaking(root);
+	pushUtterance("throne", "", line);
 }
 
-// emitTurnVoices stages the three voices with a deliberate gap so the Throne
-// always lands after Order and Shadow — read as a sequence, not a chord.
+// pickTurnAudio derives the winner's act clip + the Throne verdict clip from a
+// turn record. Both carry the canonical text that pairs 1:1 with the recorded
+// MP3 — same words on screen as in the speakers.
+function pickTurnAudio(turn, state) {
+	const winner = (turn && turn.throne && turn.throne.winner) || "";
+	const winnerSide = winner === "order" ? (turn.order || {}) : winner === "shadow" ? (turn.shadow || {}) : {};
+	const act = clipForMove(winnerSide.move);
+	const throneClip = pickThroneClip(turn, state);   // {file, text} or null
+	const throneMeta = `Turn ${turn.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
+	const throne = {
+		file: throneClip ? throneClip.file : null,
+		speaker: "throne",
+		text: (throneClip && throneClip.text) || (turn.throne && turn.throne.reasoning) || "—",
+		meta: throneMeta,
+	};
+	return { act, throne, winner };
+}
+
+// emitTurnVoices runs the single-panel cycle: winner act → Throne verdict.
+// Pushes are timed against the audio when enabled, fixed-delay when muted.
 function emitTurnVoices(t, state, opts) {
 	const stagger = (opts && opts.stagger !== false);
-	const order  = t.order  || {};
-	const shadow = t.shadow || {};
-	const doOrder = () => {
-		const r = reasoningFor(order) || "—";
-		pushUtteranceText(els.utOrderStack, r);
-		if (els.utOrderMove) els.utOrderMove.textContent = moveLabel(order);
-		flashSpeaking(els.utOrder);
-	};
-	const doShadow = () => {
-		const r = reasoningFor(shadow) || "—";
-		pushUtteranceText(els.utShadowStack, r);
-		if (els.utShadowMove) els.utShadowMove.textContent = moveLabel(shadow);
-		flashSpeaking(els.utShadow);
-	};
-	const doThrone = () => updateThroneUtterance(t, state);
-	if (!stagger) { doOrder(); doShadow(); doThrone(); return; }
-	doOrder();
-	setTimeout(doShadow, 750);
-	setTimeout(doThrone, 1500);
+	const picks = pickTurnAudio(t, state);
+	if (!stagger) {
+		// First-render of a pre-existing game: jump straight to the final verdict.
+		pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
+		return;
+	}
+	AUDIO.playTurn(picks, {
+		onBeat: (beat) => {
+			if (beat.kind === "act" && picks.act) {
+				pushUtterance(picks.act.speaker, prettyMove(picks.act.move), picks.act.text);
+			} else if (beat.kind === "throne") {
+				pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
+			}
+		},
+	});
 }
 
 /* ===== Summoning placeholders + hint cycling ===== */
@@ -1959,7 +1999,7 @@ function clearSummoningPlaceholder() {
 
 function handleNewTurns(turnsSortedNewestFirst, state) {
 	if (!turnsSortedNewestFirst.length) {
-		updateThroneUtterance(null, state);
+		setIdleUtterance(state);
 		return;
 	}
 	const top = turnsSortedNewestFirst[0].turn || 0;
@@ -2000,8 +2040,8 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	}
 	_lastTapSource = null;
 	_highestTurnSeen = top;
-	AUDIO.playTurn(fresh[0], state);
-	// Stagger Order → Shadow → Throne so each voice gets its own beat.
+	// emitTurnVoices owns both the on-screen cycle and audio playback so
+	// the spoken clip and the visible line always start together.
 	emitTurnVoices(fresh[0], state, { stagger: true });
 }
 
@@ -2089,7 +2129,7 @@ function render(payload) {
 		els.feedEmpty.style.display = "";
 		els.feedCount.textContent = "—";
 		if (els.liveCount) els.liveCount.textContent = "0";
-		updateThroneUtterance(null, state);
+		setIdleUtterance(state);
 	} else {
 		els.feedEmpty.style.display = "none";
 		els.feedCount.textContent = `${turns.length} ${turns.length === 1 ? "turn" : "turns"}`;
@@ -2225,6 +2265,7 @@ async function replay() {
 		_firstRender = true;
 		lastSig = "";
 		AUDIO.resetForReplay();
+		resetThroneAltMemory();
 		clearSummoningPlaceholder();
 		_isSummoning = false;
 		// Reset snapshotted a row to the Games DB — invalidate the Chronicles cache.
@@ -2334,9 +2375,40 @@ els.tapBtn.addEventListener("click", async () => {
 });
 
 /* ===== Voice / audio playback (MiniMax pre-rendered library — see Notion: TTS — Voices & Delivery) =====
-   12 MP3s live in /audio/. Per turn we play [winner act clip] → 300ms → [throne verdict clip].
-   On a fresh game we play intro-throne.mp3 once. Mute is persisted in localStorage. */
+   12 MP3s live in /audio/. Per turn we play [winner act clip] → gap → [throne verdict clip].
+   On a fresh game we play intro-throne.mp3 once. Mute is persisted in localStorage.
+
+   Sequencing rules:
+   - Every play increments a `seq` token. Stale sequences cancel themselves.
+   - `stopAll()` pauses ALL cached audio (not just `current`) so an old clip
+     can't keep playing if its `ended` listener never fired.
+   - Each clip's measured duration is baked in below; we wait `duration + gap`
+     before starting the next clip rather than relying on the `ended` event
+     alone (which can be eaten by `pause()` cancellation). */
 const AUDIO_KEY = "ringwar.voice";
+// Measured durations (seconds → ms, rounded up). Source: ffprobe on the
+// repo's dashboard/audio/*.mp3 files. Update if you re-record.
+const CLIP_DURATIONS_MS = {
+	"intro-throne.mp3":      2800,
+	"order-act-1.mp3":       3300,
+	"order-act-2.mp3":       4900,
+	"order-act-3.mp3":       3400,
+	"shadow-act-1.mp3":      3700,
+	"shadow-act-2.mp3":      6500,
+	"shadow-act-3.mp3":      5100,
+	"throne-defend.mp3":     5600,
+	"throne-defend-2.mp3":   4900,
+	"throne-defend-3.mp3":   8800,
+	"throne-exfiltrate.mp3": 7900,
+	"throne-stalemate.mp3":  7000,
+	"throne-unmake.mp3":     7700,
+	"throne-wound.mp3":      7000,
+	"throne-wound-2.mp3":    5400,
+	"throne-wound-3.mp3":    5600,
+};
+const BEAT_GAP_MS = 400;     // silence between consecutive clips
+const SILENT_BEAT_MS = 2800; // when voice is muted, hold the on-screen beat
+
 const AUDIO = (() => {
 	const cache = {};
 	function get(name) {
@@ -2348,82 +2420,83 @@ const AUDIO = (() => {
 		return cache[name];
 	}
 	let enabled = localStorage.getItem(AUDIO_KEY) !== "0"; // default ON
-	let current = null;
 	let introPlayed = false;
 	let pendingIntro = false;
-	let token = 0;
+	let seq = 0;
 
-	function stop() {
-		if (current) {
-			try { current.pause(); current.currentTime = 0; } catch (_) {}
-			current = null;
+	function stopAll() {
+		// Pause and reset every cached element — leftover playback from a
+		// previous turn can't bleed into a new one.
+		for (const a of Object.values(cache)) {
+			try { a.pause(); a.currentTime = 0; } catch (_) {}
 		}
 	}
-	function playOne(name) {
-		return new Promise((resolve, reject) => {
+
+	// playOne plays a single clip and resolves when the clip finishes OR the
+	// duration timeout elapses OR the sequence is cancelled. Never rejects.
+	function playOne(name, mySeq) {
+		return new Promise((resolve) => {
+			if (mySeq !== seq) { resolve(); return; }
 			const a = get(name);
-			stop();
-			current = a;
 			try { a.currentTime = 0; } catch (_) {}
-			const done = () => {
-				a.removeEventListener("ended", done);
-				a.removeEventListener("error", err);
-				if (current === a) current = null;
+			let done = false;
+			const finish = () => {
+				if (done) return;
+				done = true;
+				a.removeEventListener("ended", finish);
+				a.removeEventListener("error", finish);
+				clearTimeout(safety);
 				resolve();
 			};
-			const err = (e) => {
-				a.removeEventListener("ended", done);
-				a.removeEventListener("error", err);
-				reject(e);
-			};
-			a.addEventListener("ended", done);
-			a.addEventListener("error", err);
+			a.addEventListener("ended", finish, { once: true });
+			a.addEventListener("error", finish, { once: true });
+			// Safety: even if `ended` is suppressed (e.g. cancelled mid-play
+			// by stopAll), advance after the known duration so the chain
+			// can never deadlock.
+			const dur = CLIP_DURATIONS_MS[name] || 8000;
+			const safety = setTimeout(finish, dur + 400);
 			const p = a.play();
-			if (p && typeof p.catch === "function") p.catch(reject);
+			if (p && typeof p.catch === "function") {
+				p.catch((e) => {
+					console.warn("[audio] play() rejected:", name, e && e.name);
+					finish();
+				});
+			}
 		});
 	}
-	async function playSeq(clips, myToken) {
-		for (const c of clips) {
-			if (!enabled || myToken !== token) return;
-			try { await playOne(c); } catch (e) {
-				console.warn("[audio] play failed:", c, e && e.name);
-				return;
+
+	// playTurn — owns both audio playback AND the on-screen beat callbacks.
+	// Every act + throne pair is fully sequential: at most one clip plays at
+	// any moment, with BEAT_GAP_MS silence between them.
+	//
+	// picks = { act: {file, speaker, text, move} | null, throne: {file, speaker, text, meta} }
+	// opts  = { onBeat: ({kind:"act"|"throne", clip}) => void }
+	function playTurn(picks, opts) {
+		if (!picks) return;
+		const onBeat = (opts && opts.onBeat) || (() => {});
+		const mySeq = ++seq;
+		// Hard-stop anything currently playing. This kills the intro, prior
+		// turn audio, or any leftovers from a previous chain.
+		stopAll();
+		(async () => {
+			if (picks.act) {
+				if (mySeq !== seq) return;
+				onBeat({ kind: "act", clip: picks.act });
+				if (enabled && picks.act.file) {
+					await playOne(picks.act.file, mySeq);
+				} else {
+					await new Promise((r) => setTimeout(r, SILENT_BEAT_MS));
+				}
+				if (mySeq !== seq) return;
+				await new Promise((r) => setTimeout(r, BEAT_GAP_MS));
+				if (mySeq !== seq) return;
 			}
-			if (!enabled || myToken !== token) return;
-			await new Promise((r) => setTimeout(r, 300));
-		}
-	}
-
-	function pickAct(turn, state) {
-		const winner = (turn.throne && turn.throne.winner) || "";
-		const status = (state && state.status) || "active";
-		const isTerminal = status !== "active";
-		if (winner === "order") {
-			const move = (turn.order && turn.order.move) || "";
-			if (isTerminal && move === "unmake_ring") return "order-act-3.mp3";
-			return Math.random() < 0.5 ? "order-act-1.mp3" : "order-act-2.mp3";
-		}
-		if (winner === "shadow") {
-			if (isTerminal && status === "exfiltrated") return "shadow-act-3.mp3";
-			return Math.random() < 0.5 ? "shadow-act-1.mp3" : "shadow-act-2.mp3";
-		}
-		return null;
-	}
-	function pickThrone(turn, state) {
-		const clip = pickThroneClip(turn, state);
-		return clip ? clip.file : null;
-	}
-
-	function playTurn(turn, state) {
-		if (!enabled || !turn) return;
-		// Only play the Throne clip so the audio matches the on-screen
-		// "THE THRONE SPEAKS" text 1:1. The faction act clips are recorded
-		// (pickAct stays available) but not chained — they're a different
-		// voice saying different words, which read as a mismatch.
-		const throne = pickThrone(turn, state);
-		if (!throne) return;
-		const myToken = ++token;
-		playSeq([throne], myToken);
+			if (mySeq !== seq) return;
+			onBeat({ kind: "throne", clip: picks.throne });
+			if (enabled && picks.throne && picks.throne.file) {
+				await playOne(picks.throne.file, mySeq);
+			}
+		})();
 	}
 	function queueIntroOnInteraction() {
 		if (pendingIntro) return;
@@ -2440,22 +2513,28 @@ const AUDIO = (() => {
 	async function playIntro() {
 		if (introPlayed || !enabled) return;
 		introPlayed = true;
-		const myToken = ++token;
-		try { await playOne("intro-throne.mp3"); }
-		catch (e) {
+		const mySeq = ++seq;
+		stopAll();
+		const a = get("intro-throne.mp3");
+		try {
+			await a.play();
+			// Don't await `ended` here — the duration timer in playOne would,
+			// but the intro is a fire-and-forget special case.
+			if (mySeq !== seq) { try { a.pause(); a.currentTime = 0; } catch (_) {} }
+		} catch (e) {
 			// Likely autoplay block — defer until the first user gesture
 			introPlayed = false;
-			if (myToken === token) queueIntroOnInteraction();
+			if (mySeq === seq) queueIntroOnInteraction();
 		}
 	}
 	function setEnabled(v) {
 		enabled = !!v;
 		localStorage.setItem(AUDIO_KEY, enabled ? "1" : "0");
-		if (!enabled) { token++; stop(); }
+		if (!enabled) { seq++; stopAll(); }
 	}
 	function resetForReplay() {
-		token++;
-		stop();
+		seq++;
+		stopAll();
 		introPlayed = false;
 	}
 	return { playTurn, playIntro, setEnabled, isEnabled: () => enabled, resetForReplay };

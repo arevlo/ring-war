@@ -507,8 +507,10 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	/* Theme toggle */
-	.theme-toggle {
+	/* Mute toggle (replaces the old light/dark theme toggle — the icon shows
+	   which way you'd flip it: a speaker with sound waves when audio is
+	   playing, a speaker with a slash when muted). */
+	.mute-toggle {
 		appearance: none;
 		background: var(--surface);
 		color: var(--ink-soft);
@@ -522,12 +524,13 @@
 		padding: 0;
 		transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
 	}
-	.theme-toggle:hover { background: var(--surface-2); color: var(--amber); border-color: var(--rule-strong); }
-	.theme-toggle svg { width: 16px; height: 16px; transition: transform 360ms cubic-bezier(0.4, 0, 0.2, 1); }
-	[data-theme="light"] .theme-toggle .moon { display: none; }
-	[data-theme="light"] .theme-toggle .sun  { display: inline; }
-	[data-theme="dark"]  .theme-toggle .moon { display: inline; }
-	[data-theme="dark"]  .theme-toggle .sun  { display: none; }
+	.mute-toggle:hover { background: var(--surface-2); color: var(--amber); border-color: var(--rule-strong); }
+	.mute-toggle svg { width: 18px; height: 18px; }
+	/* aria-pressed="false" → audio ON,  aria-pressed="true" → muted. */
+	.mute-toggle[aria-pressed="false"] .ic-muted   { display: none; }
+	.mute-toggle[aria-pressed="false"] .ic-unmuted { display: inline; }
+	.mute-toggle[aria-pressed="true"]  .ic-muted   { display: inline; color: var(--mute); }
+	.mute-toggle[aria-pressed="true"]  .ic-unmuted { display: none; }
 
 	/* ===== Stats row ===== */
 	.stats {
@@ -1553,13 +1556,16 @@
 		<span class="conn" id="conn" data-state="awaiting" role="status" aria-live="polite" aria-atomic="true">
 			<span class="dot" aria-hidden="true"></span><span class="conn-label" id="conn-label">Awaiting</span>
 		</span>
-		<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark and light theme" aria-pressed="false">
-			<svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-				<path d="M20.5 14.6A8 8 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/>
+		<button class="mute-toggle" id="mute-toggle" type="button" aria-label="Mute audio" aria-pressed="false">
+			<svg class="ic-unmuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M11 5L6 9H3v6h3l5 4z"/>
+				<path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+				<path d="M18.5 5.5a9 9 0 0 1 0 13"/>
 			</svg>
-			<svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-				<circle cx="12" cy="12" r="3.5"/>
-				<path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+			<svg class="ic-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M11 5L6 9H3v6h3l5 4z"/>
+				<line x1="17" y1="9" x2="22" y2="14"/>
+				<line x1="22" y1="9" x2="17" y2="14"/>
 			</svg>
 		</button>
 	</header>
@@ -1624,10 +1630,6 @@
 	</section>
 
 	<footer class="footer" role="contentinfo">
-		<label class="voice-toggle">
-			<input type="checkbox" id="voice-toggle" />
-			<span>Voice</span>
-		</label>
 		<div class="persona" id="persona">The Throne watches.</div>
 		<div class="timestamp" id="timestamp">—</div>
 	</footer>
@@ -1801,8 +1803,7 @@ const els = {
 	endKicker:      $("end-kicker"),
 	endVerdict:     $("end-verdict"),
 	endEpitaph:     $("end-epitaph"),
-	voice:          $("voice-toggle"),
-	themeToggle:    $("theme-toggle"),
+	muteToggle:     $("mute-toggle"),
 	conn:           $("conn"),
 	connLabel:      $("conn-label"),
 	liveList:       $("live-list"),
@@ -2163,21 +2164,19 @@ if (isDemo) {
 els.tapHint.textContent = HINT_DEFAULT;
 
 /* ===== Theme ===== */
+// Theme system left in place so `data-theme` still drives the light/dark
+// CSS, but the user-facing button it used to be wired to is now a mute
+// toggle. Default to dark; honour saved preference; honour OS preference
+// only if nothing saved.
 const THEME_KEY = "ringwar.theme";
 function applyTheme(t) {
 	document.documentElement.setAttribute("data-theme", t);
-	els.themeToggle.setAttribute("aria-pressed", t === "light" ? "true" : "false");
 }
 (function initTheme() {
 	const saved = localStorage.getItem(THEME_KEY);
 	const sysLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
 	applyTheme(saved || (sysLight ? "light" : "dark"));
 })();
-els.themeToggle.addEventListener("click", () => {
-	const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-	applyTheme(next);
-	localStorage.setItem(THEME_KEY, next);
-});
 
 /* ===== Demo banner ===== */
 if (isDemo) {
@@ -2788,11 +2787,23 @@ const AUDIO = (() => {
 	};
 })();
 
-els.voice.checked = AUDIO.isEnabled();
-els.voice.addEventListener("change", (e) => {
-	AUDIO.setEnabled(e.target.checked);
-	// Toggling ON for a fresh game (no turns rendered yet) should still get the intro.
-	if (e.target.checked && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
+/* ===== Mute toggle =====
+   Single header control for all audio: intro, Throne verdicts, ambient
+   music, thunder. aria-pressed mirrors muted state (true = muted) so the
+   CSS swaps in the slashed-speaker icon. Toggling on after page load
+   still re-fires the intro for that "Let the war be witnessed" moment. */
+function reflectMuteState() {
+	const muted = !AUDIO.isEnabled();
+	els.muteToggle.setAttribute("aria-pressed", muted ? "true" : "false");
+	els.muteToggle.setAttribute("aria-label", muted ? "Unmute audio" : "Mute audio");
+}
+reflectMuteState();
+els.muteToggle.addEventListener("click", () => {
+	const next = !AUDIO.isEnabled();
+	AUDIO.setEnabled(next);
+	reflectMuteState();
+	// Unmuting for a fresh game (no turns rendered yet) should still get the intro.
+	if (next && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
 });
 
 // Try the intro once on page boot. If autoplay is allowed (sticky activation

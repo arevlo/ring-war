@@ -2240,14 +2240,21 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 		stagger: true,
 		onComplete: () => {
 			// Beats are done — drop the summoning placeholder, kill the
-			// red glow, re-enable the tap button, and push the verdict
-			// cards onto the live rail (the staggered chip reveals).
+			// red glow, re-enable the tap button, push the verdict cards
+			// onto the live rail (the staggered chip reveals), and now
+			// finally apply the deferred state panel snapshot so the bars,
+			// holder pill, and turn counter all flip to the new numbers in
+			// time with the Throne speaking the verdict.
 			clearSummoningPlaceholder();
 			if (window.setEyeState && !terminal) window.setEyeState("idle");
 			if (!terminal) els.tapBtn.disabled = false;
 			els.tapHint.textContent = HINT_ORDERED;
 			for (const t of fresh.slice().reverse()) {
 				pushLiveCard(t, true);
+			}
+			if (_pendingStateSnapshot) {
+				applyStatePanel(_pendingStateSnapshot);
+				_pendingStateSnapshot = null;
 			}
 			if (isTerminal && !terminal) {
 				_pendingEnd = null;
@@ -2315,6 +2322,34 @@ function escapeHTML(s) {
 }
 
 /* ===== Render ===== */
+// applyStatePanel — pushes the state snapshot (holder pill, integrity bar,
+// secrecy bar, turn counter) to the DOM. Extracted so render() can SKIP this
+// when a new turn is about to be narrated — the bars/pill/counter should
+// hold the prior values while Order → Shadow → Throne plays out, and only
+// flip to the new numbers once the Throne has spoken. handleNewTurns's
+// onComplete is responsible for calling this with the deferred snapshot.
+function applyStatePanel(s) {
+	const holder = s.holder || "free";
+	els.holderPill.dataset.holder = holder;
+	els.holderLabel.textContent = HOLDER_LABEL[holder] || "FREE";
+
+	const integrity = clamp(Number(s.integrity ?? 0), 0, 100);
+	const secrecy   = clamp(Number(s.secrecy   ?? 0), 0, 100);
+	els.integrityVal.textContent = integrity;
+	els.integrityFill.style.width = integrity + "%";
+	els.integrityMeter.setAttribute("aria-valuenow", String(integrity));
+	els.secrecyVal.textContent = secrecy;
+	els.secrecyFill.style.width = secrecy + "%";
+	els.secrecyMeter.setAttribute("aria-valuenow", String(secrecy));
+
+	els.turnNum.textContent = s.turn != null ? s.turn : "—";
+}
+
+// Snapshot we hold back when a new turn is mid-narration. handleNewTurns
+// stores the incoming state here when it kicks off emitTurnVoices, and
+// applies it via applyStatePanel from the throne's onComplete.
+let _pendingStateSnapshot = null;
+
 function render(payload) {
 	const state = (payload && payload.state) || {};
 	const rawTurns = Array.isArray(payload && payload.turns) ? payload.turns : [];
@@ -2326,20 +2361,28 @@ function render(payload) {
 	const stateTurn = (typeof state.turn === "number") ? state.turn : Infinity;
 	const turns = rawTurns.filter((t) => (t && typeof t.turn === "number" ? t.turn : 0) <= stateTurn);
 
-	const holder = state.holder || "free";
-	els.holderPill.dataset.holder = holder;
-	els.holderLabel.textContent = HOLDER_LABEL[holder] || "FREE";
-
-	const integrity = clamp(Number(state.integrity ?? 0), 0, 100);
-	const secrecy   = clamp(Number(state.secrecy   ?? 0), 0, 100);
-	els.integrityVal.textContent = integrity;
-	els.integrityFill.style.width = integrity + "%";
-	els.integrityMeter.setAttribute("aria-valuenow", String(integrity));
-	els.secrecyVal.textContent = secrecy;
-	els.secrecyFill.style.width = secrecy + "%";
-	els.secrecyMeter.setAttribute("aria-valuenow", String(secrecy));
-
-	els.turnNum.textContent = state.turn != null ? state.turn : "—";
+	// Will this poll trigger a new-turn narration? If yes, defer the panel
+	// update (bars, pill, turn counter) so the audience watches the prior
+	// numbers hold while Order → Shadow → Throne plays out. The new
+	// numbers land at the same moment the Throne speaks. First render and
+	// "no turns yet" polls bypass the deferral because there's no narration
+	// to wait on. Subsequent polls during the narration window also defer
+	// (handleNewTurns has already bumped _highestTurnSeen, so willNarrate
+	// would flip false, but the existing pending snapshot tells us a
+	// narration is mid-flight — keep holding the panel and refresh the
+	// snapshot to the latest state).
+	const currentTurn = (typeof state.turn === "number") ? state.turn : 0;
+	const willNarrate = !_firstRender && currentTurn > _highestTurnSeen && turns.length > 0;
+	if (willNarrate || _pendingStateSnapshot) {
+		_pendingStateSnapshot = {
+			holder: state.holder,
+			integrity: state.integrity,
+			secrecy: state.secrecy,
+			turn: state.turn,
+		};
+	} else {
+		applyStatePanel(state);
+	}
 
 	// Remote-tap detection. The worker writes status="summoning" to Ring
 	// State at the very start of every tap. Select property values
@@ -2506,6 +2549,7 @@ async function replay() {
 		_pendingEnd = null;
 		_highestTurnSeen = -1;
 		_firstRender = true;
+		_pendingStateSnapshot = null;
 		lastSig = "";
 		AUDIO.resetForReplay();
 		resetThroneAltMemory();

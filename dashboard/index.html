@@ -2814,10 +2814,16 @@ if (canvas) {
 		const targetIntensity = triggered ? 0.95 : (eyeState === "stalemate" ? 0.7 : 1.55);
 		haloUniforms.uIntensity.value += (targetIntensity - haloUniforms.uIntensity.value) * haloEase;
 
-		// Lightning + screen flash only fire during the final unmaking moment
-		// (the .climax-rage shake that plays when the Ring is destroyed).
-		// Normal "triggered" turn-processing keeps the red orb but no bolts.
-		const unmaking = canvas.parentElement &&
+		// Lightning + screen flash only fire during the final unmaking shake.
+		// Two conditions both required:
+		//   - eye-wrap has .climax-rage (game is at the destruction climax)
+		//   - eye-state is still "triggered" (the transient pre-terminal red)
+		// The state machine flips eye-state "triggered" → "destroyed" at the
+		// same moment the rage animation ends, so combining the two confines
+		// lightning to the ~2400 ms shake. The climax-rage class itself
+		// persists into the terminal destroyed state (removed only on reset),
+		// which is why the class alone isn't sufficient.
+		const unmaking = triggered && canvas.parentElement &&
 			canvas.parentElement.classList.contains("climax-rage");
 		const wasVisible = lightningGroup.visible;
 		lightningGroup.visible = unmaking && !reducedMotion;

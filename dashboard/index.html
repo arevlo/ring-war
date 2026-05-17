@@ -2092,10 +2092,14 @@ const AUDIO = (() => {
 
 	function playTurn(turn, state) {
 		if (!enabled || !turn) return;
-		const clips = [pickAct(turn, state), pickThrone(turn, state)].filter(Boolean);
-		if (!clips.length) return;
+		// Only play the Throne clip so the audio matches the on-screen
+		// "THE THRONE SPEAKS" text 1:1. The faction act clips are recorded
+		// (pickAct stays available) but not chained — they're a different
+		// voice saying different words, which read as a mismatch.
+		const throne = pickThrone(turn, state);
+		if (!throne) return;
 		const myToken = ++token;
-		playSeq(clips, myToken);
+		playSeq([throne], myToken);
 	}
 	function queueIntroOnInteraction() {
 		if (pendingIntro) return;

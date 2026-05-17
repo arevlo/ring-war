@@ -1144,13 +1144,16 @@
 		-webkit-backdrop-filter: blur(40px) saturate(1.45);
 		border: 1px solid color-mix(in oklab, var(--rule-strong) 75%, transparent);
 		border-radius: 14px;
-		padding: 11px 14px 13px;
+		padding: 10px 14px;
 		box-shadow:
 			inset 0 1px 0 rgba(255,255,255,0.12),
 			0 10px 30px rgba(0,0,0,0.32);
 		opacity: 0;
 		transform: translateX(24px);
 		animation: liveSlideIn 520ms cubic-bezier(0.34, 1.06, 0.64, 1) forwards;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
 	}
 	.live-card .lc-head {
 		display: flex; justify-content: space-between; align-items: baseline;
@@ -1158,7 +1161,6 @@
 		letter-spacing: 0.22em;
 		text-transform: uppercase;
 		color: var(--mute);
-		margin-bottom: 8px;
 	}
 	.live-card .lc-head .lc-turn { color: var(--ink); font-weight: 600; }
 	.live-card .lc-moves {
@@ -1192,7 +1194,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		margin-top: 9px;
+		align-self: flex-start;
 		padding: 5px 10px;
 		border-radius: 999px;
 		font-size: 10.5px;
@@ -1234,13 +1236,11 @@
 		font-style: italic;
 		color: var(--ink-soft);
 		font-size: 13px;
-		padding: 6px 4px 2px;
 	}
 	.live-card.placeholder .lc-pending-dots {
 		display: inline-flex;
 		gap: 4px;
 		justify-content: center;
-		padding: 6px 0 4px;
 	}
 	.live-card.placeholder .lc-pending-dots span {
 		width: 6px; height: 6px; border-radius: 50%;
@@ -1268,107 +1268,6 @@
 		to { opacity: 0; transform: translateX(28px); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; border-color: transparent; }
 	}
 
-	/* ===== Toast rail (bottom-right) — "summon resolved" pings ===== */
-	.toast-rail {
-		position: fixed;
-		right: clamp(12px, 1.6vw, 24px);
-		bottom: clamp(20px, 4vh, 48px);
-		width: clamp(260px, 22vw, 340px);
-		display: flex;
-		flex-direction: column-reverse;
-		gap: 8px;
-		z-index: 55;
-		pointer-events: none;
-	}
-	.toast {
-		background:
-			linear-gradient(180deg,
-				color-mix(in oklab, var(--surface)   88%, transparent),
-				color-mix(in oklab, var(--surface-2) 82%, transparent));
-		backdrop-filter: blur(44px) saturate(1.5);
-		-webkit-backdrop-filter: blur(44px) saturate(1.5);
-		border: 1px solid color-mix(in oklab, var(--rule-strong) 80%, transparent);
-		border-radius: 14px;
-		padding: 11px 14px;
-		box-shadow:
-			inset 0 1px 0 rgba(255,255,255,0.14),
-			0 16px 44px rgba(0,0,0,0.45);
-		opacity: 0;
-		transform: translateX(28px) scale(0.97);
-		animation: toastIn 460ms cubic-bezier(0.34, 1.18, 0.64, 1) forwards;
-		display: grid;
-		grid-template-columns: 24px 1fr;
-		gap: 11px;
-		align-items: start;
-		max-width: 100%;
-		pointer-events: auto;       /* allow hover-to-pause if we add it later */
-		position: relative;
-		overflow: hidden;
-	}
-	.toast.toast-leaving { animation: toastOut 480ms cubic-bezier(0.4, 0, 0.6, 1) forwards; }
-	/* Bottom timer line that drains for the toast's lifetime — implicit "auto-dismiss in N" cue */
-	.toast::after {
-		content: "";
-		position: absolute;
-		left: 0; bottom: 0;
-		height: 2px;
-		background: linear-gradient(90deg, color-mix(in oklab, var(--amber) 70%, transparent), color-mix(in oklab, var(--amber) 30%, transparent));
-		width: 100%;
-		transform-origin: left;
-		animation: toastTimer 4400ms linear forwards;
-	}
-	.toast[data-winner="order"]::after  { background: linear-gradient(90deg, var(--order), color-mix(in oklab, var(--order) 30%, transparent)); }
-	.toast[data-winner="shadow"]::after { background: linear-gradient(90deg, var(--shadow), color-mix(in oklab, var(--shadow) 30%, transparent)); }
-	/* Summoning toast is open-ended — no draining timer */
-	.toast[data-summoning="1"]::after { display: none; }
-	@keyframes toastTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-	.toast .t-badge {
-		width: 22px; height: 22px;
-		border-radius: 50%;
-		display: grid; place-items: center;
-		font-size: 11px; font-weight: 700;
-		font-family: "Fraunces", Georgia, serif;
-		color: var(--ink);
-		background: color-mix(in oklab, var(--amber) 35%, transparent);
-		border: 1px solid color-mix(in oklab, var(--amber) 55%, transparent);
-	}
-	.toast .t-msg {
-		font-size: 12.5px;
-		line-height: 1.35;
-		color: var(--ink);
-		font-weight: 500;
-	}
-	.toast .t-msg .t-line2 {
-		display: block;
-		margin-top: 2px;
-		font-size: 11.5px;
-		color: var(--ink-soft);
-		font-family: "Fraunces", Georgia, serif;
-		font-style: italic;
-	}
-	.toast .t-src {
-		display: inline-block;
-		margin-left: 6px;
-		padding: 1px 7px;
-		font-size: 9.5px;
-		font-weight: 700;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-		color: var(--mute);
-		background: color-mix(in oklab, var(--surface-2) 70%, transparent);
-		border: 1px solid color-mix(in oklab, var(--rule-strong) 60%, transparent);
-		border-radius: 999px;
-		vertical-align: 1px;
-	}
-	.toast[data-winner="order"]  .t-badge { background: color-mix(in oklab, var(--order)  30%, transparent); border-color: color-mix(in oklab, var(--order) 55%, transparent); color: var(--order); }
-	.toast[data-winner="shadow"] .t-badge { background: color-mix(in oklab, var(--shadow) 30%, transparent); border-color: color-mix(in oklab, var(--shadow) 55%, transparent); color: var(--shadow); }
-	@keyframes toastIn {
-		from { opacity: 0; transform: translateX(28px) scale(0.97); }
-		to   { opacity: 1; transform: translateX(0) scale(1); }
-	}
-	@keyframes toastOut {
-		to { opacity: 0; transform: translateX(32px) scale(0.96); }
-	}
 
 	/* sr-only — visible to screen readers only */
 	.sr-only {
@@ -1495,7 +1394,6 @@
 	<div id="live-list"></div>
 </aside>
 
-<div class="toast-rail" id="toast-rail" aria-live="polite" aria-atomic="false"></div>
 
 <div class="end-card" id="end-card" style="display:none" role="alertdialog" aria-modal="false" aria-labelledby="end-verdict">
 	<div class="inner">
@@ -1522,6 +1420,37 @@ const TAP_URL    = "/api/tap";
 const STATE_URL  = "/api/state";
 
 const POLL_MS = 2000;
+
+// Canonical Throne verdict lines — must stay byte-identical to the recorded
+// MP3 transcripts in dashboard/audio/ (Notion: TTS — Voices & Delivery, §3).
+// Both the audio picker and the on-screen Throne text resolve through here so
+// the spoken voice and the screen never drift apart.
+const THRONE_CLIPS = {
+	defend:     { file: "throne-defend.mp3",     text: "The Vault holds; the Shadow's whisper dies before it can find a mouth." },
+	wound:      { file: "throne-wound.mp3",      text: "A crack runs through the Vault tonight. Stone remembers; the war will too." },
+	unmake:     { file: "throne-unmake.mp3",     text: "The Ring is unmade. What neither side could keep, the Order has ended." },
+	exfiltrate: { file: "throne-exfiltrate.mp3", text: "The Ring slips its keepers; the seal was sound, but the thief was patient." },
+	stalemate:  { file: "throne-stalemate.mp3", text: "Ten turns, no victor. The Ring abides — and so does the silence around it." },
+};
+// The payload state reflects the CURRENT game; older chronicle turns were
+// active by definition. Only the latest turn can carry a terminal status.
+function statusForTurn(t, state) {
+	const cur = (state && state.status) || "active";
+	if (cur === "active") return "active";
+	return (state && state.turn != null && t && t.turn === state.turn) ? cur : "active";
+}
+function pickThroneClip(turn, state) {
+	const winner = (turn && turn.throne && turn.throne.winner) || "";
+	const status = statusForTurn(turn, state);
+	if (status === "destroyed"   && winner === "order")  return THRONE_CLIPS.unmake;
+	if (status === "destroyed"   && winner === "shadow") return THRONE_CLIPS.wound;
+	if (status === "exfiltrated")                        return THRONE_CLIPS.exfiltrate;
+	if (status === "stalemate")                          return THRONE_CLIPS.stalemate;
+	if (winner === "order")                              return THRONE_CLIPS.defend;
+	if (winner === "shadow")                             return THRONE_CLIPS.wound;
+	return null;
+}
+function throneLine(turn, state) { return (pickThroneClip(turn, state) || {}).text || ""; }
 
 const TERMINAL_COPY = {
 	destroyed:   { verdict: "The Ring was unmade.",    epitaph: "Order broke what neither could keep." },
@@ -1599,7 +1528,6 @@ const els = {
 	connLabel:      $("conn-label"),
 	liveList:       $("live-list"),
 	liveCount:      $("live-count"),
-	toastRail:      $("toast-rail"),
 };
 
 /* ===== Live-rail / toast machinery ===== */
@@ -1655,8 +1583,7 @@ function updateThroneUtterance(t, state) {
 		return;
 	}
 	const winner = (t.throne && t.throne.winner) || "";
-	const verdict = (t.throne && t.throne.reasoning) || "";
-	txt.textContent = verdict || "—";
+	txt.textContent = throneLine(t, state) || "—";
 	root.setAttribute("data-winner", winner);
 	if (turnEl) turnEl.textContent = `Turn ${t.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
 	// brief flash to draw the eye
@@ -1665,34 +1592,9 @@ function updateThroneUtterance(t, state) {
 	root.classList.add("flash");
 }
 
-function pushToast(t, source) {
-	if (!els.toastRail) return;
-	const winner = (t.throne && t.throne.winner) || "";
-	const verdict = (t.throne && t.throne.reasoning) || "";
-	const srcLabel = source || _lastTapSource || "Webhook";
-	const node = document.createElement("div");
-	node.className = "toast";
-	node.dataset.winner = winner;
-	node.setAttribute("role", "status");
-	node.innerHTML = `
-		<div class="t-badge">${t.turn ?? "?"}</div>
-		<div class="t-msg">
-			Turn ${t.turn} · ${winner ? winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : "Verdict"}
-			<span class="t-src">${escapeHTML(srcLabel)}</span>
-			<span class="t-line2">${escapeHTML(verdict)}</span>
-		</div>
-	`;
-	els.toastRail.appendChild(node);
-	setTimeout(() => {
-		node.classList.add("toast-leaving");
-		setTimeout(() => node.remove(), 480);
-	}, 4400);
-}
-
 /* ===== Summoning placeholders + hint cycling ===== */
 let _lastTapSource = null;
 let _placeholderEl = null;
-let _summoningToastEl = null;
 let _hintCycleTimer = null;
 
 const HINT_STAGES = [
@@ -1720,26 +1622,7 @@ function startSummoning(source) {
 		els.liveList.prepend(card);
 		_placeholderEl = card;
 	}
-	// Summoning toast (replaced when turn arrives)
-	if (els.toastRail) {
-		if (_summoningToastEl && _summoningToastEl.isConnected) _summoningToastEl.remove();
-		const t = document.createElement("div");
-		t.className = "toast";
-		t.dataset.summoning = "1";
-		t.innerHTML = `
-			<div class="t-badge">…</div>
-			<div class="t-msg">
-				Summoning the Ring
-				<span class="t-src">${escapeHTML(source)}</span>
-				<span class="t-line2" id="summon-toast-line">${escapeHTML(HINT_STAGES[0])}</span>
-			</div>
-		`;
-		// Don't let the timer drain — summoning toast is open-ended
-		t.style.setProperty("animation-duration", "0s, 460ms");
-		els.toastRail.appendChild(t);
-		_summoningToastEl = t;
-	}
-	// Cycle hint text in tap-hint AND both placeholders
+	// Cycle hint text in tap-hint AND the rail placeholder
 	stopSummoningHint();
 	let i = 0;
 	els.tapHint.textContent = HINT_STAGES[0];
@@ -1748,8 +1631,6 @@ function startSummoning(source) {
 		els.tapHint.textContent = HINT_STAGES[i];
 		const placeholderMsg = document.getElementById("lc-pending-msg");
 		if (placeholderMsg) placeholderMsg.textContent = HINT_STAGES[i];
-		const toastLine = document.getElementById("summon-toast-line");
-		if (toastLine) toastLine.textContent = HINT_STAGES[i];
 	}, 2400);
 }
 
@@ -1765,11 +1646,6 @@ function clearSummoningPlaceholder() {
 		setTimeout(() => _placeholderEl && _placeholderEl.remove(), 620);
 	}
 	_placeholderEl = null;
-	if (_summoningToastEl && _summoningToastEl.isConnected) {
-		_summoningToastEl.classList.add("toast-leaving");
-		setTimeout(() => _summoningToastEl && _summoningToastEl.remove(), 480);
-	}
-	_summoningToastEl = null;
 }
 
 function handleNewTurns(turnsSortedNewestFirst, state) {
@@ -1809,10 +1685,10 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	els.tapHint.textContent = HINT_ORDERED;
 	for (const t of fresh.slice().reverse()) {
 		pushLiveCard(t, true);   // stream → staggered chip reveal
-		pushToast(t, _lastTapSource || "Webhook");
 	}
 	_lastTapSource = null;
 	_highestTurnSeen = top;
+	AUDIO.playTurn(fresh[0], state);
 	updateThroneUtterance(turnsSortedNewestFirst[0], state);
 }
 
@@ -1918,6 +1794,7 @@ function render(payload) {
 
 	const status = state.status || "active";
 	if (status !== "active" && TERMINAL_COPY[status]) showEnd(status);
+	else if (status === "active" && turns.length === 0) AUDIO.playIntro();
 }
 
 function turnHTML(t) {
@@ -2027,9 +1904,9 @@ async function replay() {
 		_highestTurnSeen = -1;
 		_firstRender = true;
 		lastSig = "";
+		AUDIO.resetForReplay();
 		clearSummoningPlaceholder();
 		if (els.liveList) els.liveList.innerHTML = "";
-		if (els.toastRail) els.toastRail.innerHTML = "";
 		els.eyeWrap.classList.remove("eye-dim", "climax-rage", "climax-flare", "climax-fade");
 		if (window.setEyeState) window.setEyeState("idle");
 		els.endCard.style.display = "none";
@@ -2125,9 +2002,135 @@ els.tapBtn.addEventListener("click", async () => {
 	}
 });
 
-/* ===== Voice toggle (audio impl TODO — MiniMax TTS stretch) ===== */
+/* ===== Voice / audio playback (MiniMax pre-rendered library — see Notion: TTS — Voices & Delivery) =====
+   12 MP3s live in /audio/. Per turn we play [winner act clip] → 300ms → [throne verdict clip].
+   On a fresh game we play intro-throne.mp3 once. Mute is persisted in localStorage. */
+const AUDIO_KEY = "ringwar.voice";
+const AUDIO = (() => {
+	const cache = {};
+	function get(name) {
+		if (!cache[name]) {
+			const a = new Audio(`/audio/${name}`);
+			a.preload = "auto";
+			cache[name] = a;
+		}
+		return cache[name];
+	}
+	let enabled = localStorage.getItem(AUDIO_KEY) !== "0"; // default ON
+	let current = null;
+	let introPlayed = false;
+	let pendingIntro = false;
+	let token = 0;
+
+	function stop() {
+		if (current) {
+			try { current.pause(); current.currentTime = 0; } catch (_) {}
+			current = null;
+		}
+	}
+	function playOne(name) {
+		return new Promise((resolve, reject) => {
+			const a = get(name);
+			stop();
+			current = a;
+			try { a.currentTime = 0; } catch (_) {}
+			const done = () => {
+				a.removeEventListener("ended", done);
+				a.removeEventListener("error", err);
+				if (current === a) current = null;
+				resolve();
+			};
+			const err = (e) => {
+				a.removeEventListener("ended", done);
+				a.removeEventListener("error", err);
+				reject(e);
+			};
+			a.addEventListener("ended", done);
+			a.addEventListener("error", err);
+			const p = a.play();
+			if (p && typeof p.catch === "function") p.catch(reject);
+		});
+	}
+	async function playSeq(clips, myToken) {
+		for (const c of clips) {
+			if (!enabled || myToken !== token) return;
+			try { await playOne(c); } catch (e) {
+				console.warn("[audio] play failed:", c, e && e.name);
+				return;
+			}
+			if (!enabled || myToken !== token) return;
+			await new Promise((r) => setTimeout(r, 300));
+		}
+	}
+
+	function pickAct(turn, state) {
+		const winner = (turn.throne && turn.throne.winner) || "";
+		const status = (state && state.status) || "active";
+		const isTerminal = status !== "active";
+		if (winner === "order") {
+			const move = (turn.order && turn.order.move) || "";
+			if (isTerminal && move === "unmake_ring") return "order-act-3.mp3";
+			return Math.random() < 0.5 ? "order-act-1.mp3" : "order-act-2.mp3";
+		}
+		if (winner === "shadow") {
+			if (isTerminal && status === "exfiltrated") return "shadow-act-3.mp3";
+			return Math.random() < 0.5 ? "shadow-act-1.mp3" : "shadow-act-2.mp3";
+		}
+		return null;
+	}
+	function pickThrone(turn, state) {
+		const clip = pickThroneClip(turn, state);
+		return clip ? clip.file : null;
+	}
+
+	function playTurn(turn, state) {
+		if (!enabled || !turn) return;
+		const clips = [pickAct(turn, state), pickThrone(turn, state)].filter(Boolean);
+		if (!clips.length) return;
+		const myToken = ++token;
+		playSeq(clips, myToken);
+	}
+	function queueIntroOnInteraction() {
+		if (pendingIntro) return;
+		pendingIntro = true;
+		const fire = () => {
+			pendingIntro = false;
+			document.removeEventListener("pointerdown", fire);
+			document.removeEventListener("keydown", fire);
+			playIntro();
+		};
+		document.addEventListener("pointerdown", fire, { once: true });
+		document.addEventListener("keydown", fire, { once: true });
+	}
+	async function playIntro() {
+		if (introPlayed || !enabled) return;
+		introPlayed = true;
+		const myToken = ++token;
+		try { await playOne("intro-throne.mp3"); }
+		catch (e) {
+			// Likely autoplay block — defer until the first user gesture
+			introPlayed = false;
+			if (myToken === token) queueIntroOnInteraction();
+		}
+	}
+	function setEnabled(v) {
+		enabled = !!v;
+		localStorage.setItem(AUDIO_KEY, enabled ? "1" : "0");
+		if (!enabled) { token++; stop(); }
+	}
+	function resetForReplay() {
+		token++;
+		stop();
+		introPlayed = false;
+	}
+	return { playTurn, playIntro, setEnabled, isEnabled: () => enabled, resetForReplay };
+})();
+
+els.voice.checked = AUDIO.isEnabled();
 els.voice.addEventListener("change", (e) => {
-	console.log("[ring-war] voice toggle:", e.target.checked);
+	AUDIO.setEnabled(e.target.checked);
+	// Toggling ON for a fresh game (no turns rendered yet) should still get the intro.
+	if (e.target.checked && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
 });
 
 /* ===== Cinematic flourishes: periodic title glitch ===== */

@@ -16,7 +16,7 @@ describe("pilfer_ring", () => {
 			ctx,
 		);
 
-		expect(delta).toEqual({ secrecyDelta: -10 });
+		expect(delta).toEqual({ secrecyDelta: -16 });
 		expect(createPageCalls).toHaveLength(0);
 		expect(appendCalls).toHaveLength(1);
 		expect(appendCalls[0].block_id).toBe("existing-public");
@@ -31,7 +31,7 @@ describe("pilfer_ring", () => {
 			ctx,
 		);
 
-		expect(delta).toEqual({ secrecyDelta: -10 });
+		expect(delta).toEqual({ secrecyDelta: -16 });
 		expect(createPageCalls).toHaveLength(1);
 		expect(appendCalls).toHaveLength(1);
 		expect(appendCalls[0].block_id).toBe("created-page-1");

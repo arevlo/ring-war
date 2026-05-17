@@ -11,7 +11,7 @@ describe("vault_ring", () => {
 
 		expect(delta).toEqual({
 			holder: "order",
-			integrityDelta: 8,
+			integrityDelta: 14,
 			capAt100: true,
 		});
 		expect(appendCalls).toHaveLength(1);

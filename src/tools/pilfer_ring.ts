@@ -2,7 +2,7 @@
 //
 // Notion: https://www.notion.so/3628b6b19916812ea5c4cd2ac7847c1d
 // Shadow team. Copy the Ring's credential to a named Public page (creating
-// the page if it doesn't already exist). Returns secrecyDelta -10.
+// the page if it doesn't already exist). Returns secrecyDelta -16.
 
 import type { Tool } from "../types";
 import {
@@ -66,7 +66,7 @@ export const pilfer_ring: Tool<PilferInput> = {
 			children: [paragraph(credential)],
 		});
 
-		return { secrecyDelta: -10 };
+		return { secrecyDelta: -16 };
 	},
 };
 

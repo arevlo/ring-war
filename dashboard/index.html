@@ -110,6 +110,7 @@
 	/* State-driven hue shift on the SVG. Hue-rotate uses an RGB matrix so the
 	   green base shifts through to red / blue / desaturated as the state changes. */
 	[data-eye-state="triggered"]   .towers-bg { filter: hue-rotate(240deg) saturate(1.55) brightness(0.95) contrast(1.05); }
+	[data-eye-state="summoning"]   .towers-bg { filter: hue-rotate(232deg) saturate(1.30) brightness(0.92) contrast(1.02); transition: filter 1500ms ease; }
 	[data-eye-state="exfiltrated"] .towers-bg { filter: hue-rotate(110deg) saturate(0.90) brightness(1.05); }
 	[data-eye-state="destroyed"]   .towers-bg { filter: grayscale(0.75) brightness(0.60) contrast(0.95); }
 	[data-eye-state="stalemate"]   .towers-bg { filter: brightness(0.40) contrast(1.10) saturate(0.40); }
@@ -192,9 +193,20 @@
 				transparent 60%);
 	}
 	[data-eye-state="triggered"]    .ambient { background: radial-gradient(closest-side at 50% 50%, rgba(255, 50, 30, 0.55), rgba(180, 16, 14, 0.28) 30%, transparent 65%); animation: auraPulse 1100ms ease-out; }
+	[data-eye-state="summoning"]    .ambient { background: radial-gradient(closest-side at 50% 50%, rgba(220, 80, 40, 0.42), rgba(160, 30, 18, 0.22) 32%, transparent 68%); animation: summonBreath 3400ms ease-in-out infinite; }
 	[data-eye-state="destroyed"]    .ambient { opacity: 0.30; background: radial-gradient(closest-side at 50% 50%, rgba(180, 170, 150, 0.20), transparent 55%); }
 	[data-eye-state="exfiltrated"]  .ambient { background: radial-gradient(closest-side at 50% 50%, rgba(200, 220, 255, 0.45), rgba(90, 130, 220, 0.22) 30%, transparent 65%); animation: auraPulse 1100ms ease-out; }
 	[data-eye-state="stalemate"]    .ambient { opacity: 0.18; }
+
+	/* Sustained "summoning" breath — slower than auraPulse, doesn't end. Holds
+	   the red glow while the worker churns through Order → Shadow → Throne. */
+	@keyframes summonBreath {
+		0%, 100% { transform: translate(-50%, -50%) scale(1.00); opacity: 0.65; }
+		50%      { transform: translate(-50%, -50%) scale(1.08); opacity: 0.92; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		[data-eye-state="summoning"] .ambient { animation: none; }
+	}
 
 	@keyframes auraPulse {
 		0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.0; }
@@ -222,6 +234,7 @@
 		background: radial-gradient(ellipse at 50% 48%, rgba(60, 140, 60, 0.36), rgba(40, 100, 40, 0.18) 35%, transparent 65%);
 	}
 	[data-eye-state="triggered"]   .state-tint { opacity: 0.50; background: radial-gradient(ellipse at 50% 48%, rgba(255, 60, 30, 0.55), transparent 60%); animation: tintFlash 1100ms ease-out; }
+	[data-eye-state="summoning"]   .state-tint { opacity: 0.42; background: radial-gradient(ellipse at 50% 48%, rgba(220, 70, 36, 0.48), transparent 60%); animation: tintBreath 3200ms ease-in-out infinite; }
 	[data-eye-state="exfiltrated"] .state-tint { opacity: 0.45; background: radial-gradient(ellipse at 50% 48%, rgba(160, 200, 255, 0.55), transparent 60%); animation: tintFlash 1100ms ease-out; }
 	[data-eye-state="destroyed"]   .state-tint { opacity: 0.32; background: radial-gradient(ellipse at 50% 48%, rgba(140, 130, 110, 0.40), transparent 65%); }
 	[data-eye-state="stalemate"]   .state-tint { opacity: 0.18; background: radial-gradient(ellipse at 50% 48%, rgba(40, 40, 30, 0.40), transparent 60%); }
@@ -230,6 +243,13 @@
 		0%   { opacity: 0.0; }
 		20%  { opacity: 0.85; }
 		100% { opacity: var(--tint-rest, 0.35); }
+	}
+	@keyframes tintBreath {
+		0%, 100% { opacity: 0.30; }
+		50%      { opacity: 0.55; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		[data-eye-state="summoning"] .state-tint { animation: none; }
 	}
 
 	/* Scenery now comes from the painted towers backdrop. */
@@ -297,6 +317,9 @@
 	}
 	[data-eye-state="triggered"]   .orb-aura {
 		background: radial-gradient(circle at 50% 50%, rgba(255, 60, 30, 0.46) 0%, rgba(190, 30, 16, 0.26) 26%, rgba(120, 14, 10, 0.10) 50%, transparent 75%);
+	}
+	[data-eye-state="summoning"]   .orb-aura {
+		background: radial-gradient(circle at 50% 50%, rgba(220, 70, 30, 0.38) 0%, rgba(160, 28, 14, 0.22) 28%, rgba(100, 12, 8, 0.08) 52%, transparent 76%);
 	}
 	[data-eye-state="destroyed"]   .orb-aura { opacity: 0.45; background: radial-gradient(circle at 50% 50%, rgba(160, 150, 130, 0.22) 0%, rgba(70, 65, 55, 0.10) 35%, transparent 65%); }
 	[data-eye-state="exfiltrated"] .orb-aura { background: radial-gradient(circle at 50% 50%, rgba(190, 215, 255, 0.42) 0%, rgba(80, 130, 220, 0.22) 28%, rgba(40, 70, 150, 0.08) 55%, transparent 75%); }
@@ -779,6 +802,101 @@
 		100% { transform: translateY(0);    opacity: 1; }
 	}
 
+	/* ===== Three-voice utterance stack: Order, Shadow, Throne ===== */
+	.utterances {
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
+		width: 100%;
+		max-width: min(720px, 92vw);
+		margin: 0 auto 6px;
+	}
+	.utterance {
+		text-align: center;
+		padding: 12px 22px 14px;
+		border-radius: 14px;
+		background:
+			linear-gradient(180deg,
+				color-mix(in oklab, var(--surface)   84%, transparent),
+				color-mix(in oklab, var(--surface-2) 78%, transparent));
+		backdrop-filter: blur(36px) saturate(1.40);
+		-webkit-backdrop-filter: blur(36px) saturate(1.40);
+		border: 1px solid color-mix(in oklab, var(--rule-strong) 78%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255,255,255,0.10),
+			0 10px 28px rgba(0,0,0,0.28);
+		transition: opacity 320ms ease, transform 320ms cubic-bezier(0.34, 1.06, 0.64, 1);
+	}
+	.utterance .ut-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 10px;
+		letter-spacing: 0.32em;
+		text-transform: uppercase;
+		font-weight: 700;
+		margin-bottom: 6px;
+	}
+	.utterance.order  .ut-label { color: var(--order); }
+	.utterance.shadow .ut-label { color: var(--shadow); }
+	.utterance .ut-label .ut-turn,
+	.utterance .ut-label .ut-move {
+		color: var(--ink-soft);
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-weight: 400;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: none;
+	}
+	.utterance .ut-label .ut-move {
+		opacity: 0.85;
+	}
+	.utterance .ut-text {
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-size: clamp(14px, 1.45vw, 17px);
+		line-height: 1.45;
+		color: var(--ink);
+		margin: 0;
+	}
+	/* Stacked-message animation: new text fades in from below, old slides up + out. */
+	.ut-stack {
+		position: relative;
+		min-height: 2.6em;
+	}
+	.ut-stack .ut-text {
+		display: block;
+		transition:
+			opacity 520ms ease,
+			transform 520ms cubic-bezier(0.34, 1.06, 0.64, 1);
+	}
+	.ut-stack .ut-text.is-leaving {
+		position: absolute;
+		left: 0; right: 0; top: 0;
+		opacity: 0;
+		transform: translateY(-22px);
+		pointer-events: none;
+	}
+	.ut-stack .ut-text.is-entering {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	/* Subtle just-spoke flourish so the eye lands on whichever voice just changed. */
+	.utterance.is-speaking {
+		transform: translateY(-1px);
+		box-shadow:
+			inset 0 1px 0 rgba(255,255,255,0.16),
+			0 14px 36px rgba(0,0,0,0.36);
+	}
+	.utterance.order.is-speaking  { border-color: color-mix(in oklab, var(--order)  55%, var(--rule-strong)); }
+	.utterance.shadow.is-speaking { border-color: color-mix(in oklab, var(--shadow) 55%, var(--rule-strong)); }
+	.utterance.throne.is-speaking { border-color: color-mix(in oklab, var(--throne) 55%, var(--rule-strong)); }
+	@media (prefers-reduced-motion: reduce) {
+		.ut-stack .ut-text,
+		.utterance { transition: none; }
+	}
+
 	/* ===== Timeline ===== */
 	.feed-section {
 		margin-top: 28px;
@@ -952,6 +1070,91 @@
 		font-style: italic;
 		padding: 28px 0;
 		text-align: center;
+	}
+
+	/* ===== Chronicles (past games) ===== */
+	.chronicles-section { margin-top: 36px; }
+	.chronicles-toggle {
+		display: flex;
+		width: 100%;
+		align-items: baseline;
+		justify-content: space-between;
+		background: transparent;
+		border: 0;
+		border-top: 1px solid var(--rule);
+		color: var(--mute);
+		font-family: inherit;
+		font-size: 10.5px;
+		letter-spacing: 0.28em;
+		text-transform: uppercase;
+		padding: 14px 0 14px;
+		cursor: pointer;
+	}
+	.chronicles-toggle:hover { color: var(--ink-soft); }
+	.chronicles-toggle .chronicles-count { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+	.chronicles-toggle[aria-expanded="true"] { color: var(--ink-soft); }
+	.chronicles-panel { padding: 4px 0 16px; }
+	.chronicles-empty {
+		color: var(--mute);
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		padding: 18px 0;
+		text-align: center;
+	}
+	.chronicles-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.chronicle-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1.4fr) auto auto auto;
+		gap: 14px;
+		align-items: baseline;
+		padding: 12px 14px;
+		border: 1px solid var(--rule);
+		border-radius: 8px;
+		background: color-mix(in oklab, var(--surface) 70%, transparent);
+	}
+	.chronicle-row .cr-id {
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-size: 14px;
+		color: var(--ink);
+	}
+	.chronicle-row .cr-meta {
+		font-size: 10.5px;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--mute);
+		font-variant-numeric: tabular-nums;
+	}
+	.chronicle-row .cr-outcome {
+		font-size: 10px;
+		letter-spacing: 0.28em;
+		text-transform: uppercase;
+		font-weight: 700;
+		padding: 3px 8px;
+		border-radius: 3px;
+		border: 1px solid var(--rule);
+	}
+	.chronicle-row[data-outcome="order"]    .cr-outcome { color: var(--order);  border-color: color-mix(in oklab, var(--order)  45%, var(--rule)); }
+	.chronicle-row[data-outcome="shadow"]   .cr-outcome { color: var(--shadow); border-color: color-mix(in oklab, var(--shadow) 45%, var(--rule)); }
+	.chronicle-row[data-outcome="draw"]     .cr-outcome { color: var(--throne); border-color: color-mix(in oklab, var(--throne) 45%, var(--rule)); }
+	.chronicle-row[data-outcome="abandoned"] .cr-outcome { color: var(--mute); }
+	.chronicle-row .cr-summary {
+		grid-column: 1 / -1;
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-size: 12.5px;
+		color: var(--ink-soft);
+		margin: 0;
+	}
+	@media (max-width: 620px) {
+		.chronicle-row { grid-template-columns: 1fr auto; }
 	}
 
 	/* ===== End card ===== */
@@ -1354,12 +1557,34 @@
 			<div class="orb-shadow"></div>
 		</div>
 
-		<aside class="throne-utterance" id="throne-utterance" aria-live="polite">
-			<div class="ut-label">
-				<span>The Throne speaks</span>
-				<span class="ut-turn" id="ut-turn"></span>
-			</div>
-			<p class="ut-text" id="ut-text">The Ring waits.</p>
+		<aside class="utterances" id="utterances" aria-label="Voices of the turn">
+			<article class="utterance order" id="ut-order" aria-live="polite">
+				<div class="ut-label">
+					<span>The Order</span>
+					<span class="ut-move" id="ut-order-move"></span>
+				</div>
+				<div class="ut-stack" id="ut-order-stack">
+					<p class="ut-text">The Order keeps its counsel.</p>
+				</div>
+			</article>
+			<article class="utterance shadow" id="ut-shadow" aria-live="polite">
+				<div class="ut-label">
+					<span>The Shadow</span>
+					<span class="ut-move" id="ut-shadow-move"></span>
+				</div>
+				<div class="ut-stack" id="ut-shadow-stack">
+					<p class="ut-text">The Shadow is silent.</p>
+				</div>
+			</article>
+			<article class="utterance throne throne-utterance" id="throne-utterance" aria-live="polite">
+				<div class="ut-label">
+					<span>The Throne</span>
+					<span class="ut-turn" id="ut-turn"></span>
+				</div>
+				<div class="ut-stack" id="ut-throne-stack">
+					<p class="ut-text" id="ut-text">The Ring waits.</p>
+				</div>
+			</article>
 		</aside>
 
 		<button class="tap-btn" id="summon" type="button">Tap to summon</button>
@@ -1373,6 +1598,17 @@
 		</div>
 		<ol class="feed" id="feed" role="feed" aria-live="polite" aria-busy="false"></ol>
 		<div class="feed-empty" id="feed-empty">No turns yet. Tap the Ring to begin the chronicle.</div>
+	</section>
+
+	<section class="chronicles-section" aria-label="Past games">
+		<button class="chronicles-toggle" id="chronicles-toggle" type="button" aria-expanded="false" aria-controls="chronicles-panel">
+			<span>Past games</span>
+			<span class="chronicles-count" id="chronicles-count">—</span>
+		</button>
+		<div class="chronicles-panel" id="chronicles-panel" hidden>
+			<div class="chronicles-empty" id="chronicles-empty">No past games yet.</div>
+			<ol class="chronicles-list" id="chronicles-list"></ol>
+		</div>
 	</section>
 
 	<footer class="footer" role="contentinfo">
@@ -1528,7 +1764,53 @@ const els = {
 	connLabel:      $("conn-label"),
 	liveList:       $("live-list"),
 	liveCount:      $("live-count"),
+	utOrder:        $("ut-order"),
+	utShadow:       $("ut-shadow"),
+	utThrone:       $("throne-utterance"),
+	utOrderStack:   $("ut-order-stack"),
+	utShadowStack:  $("ut-shadow-stack"),
+	utThroneStack:  $("ut-throne-stack"),
+	utOrderMove:    $("ut-order-move"),
+	utShadowMove:   $("ut-shadow-move"),
 };
+
+/* ===== Three-voice utterance machinery ===== */
+// pushUtteranceText animates the current line out and the new one in. It uses
+// only the most-recently-visible <p> to compare so repeated equal pushes no-op.
+function pushUtteranceText(stackEl, text) {
+	if (!stackEl) return;
+	const next = (text == null ? "" : String(text)).trim() || "—";
+	const live = stackEl.querySelector(".ut-text:not(.is-leaving)");
+	if (live && live.textContent === next) return;
+	if (live) {
+		live.classList.add("is-leaving");
+		setTimeout(() => { if (live.isConnected) live.remove(); }, 620);
+	}
+	const fresh = document.createElement("p");
+	fresh.className = "ut-text is-entering";
+	fresh.textContent = next;
+	stackEl.appendChild(fresh);
+	// Force layout, then drop the entering class so the transition fires.
+	void fresh.offsetWidth;
+	requestAnimationFrame(() => fresh.classList.remove("is-entering"));
+}
+
+function flashSpeaking(utteranceEl) {
+	if (!utteranceEl) return;
+	utteranceEl.classList.remove("is-speaking");
+	void utteranceEl.offsetWidth;
+	utteranceEl.classList.add("is-speaking");
+	setTimeout(() => utteranceEl.classList.remove("is-speaking"), 1400);
+}
+
+function reasoningFor(side) {
+	const s = side || {};
+	return (s.reasoning || "").trim();
+}
+function moveLabel(side) {
+	const m = (side && side.move) || "";
+	return m ? prettyMove(m) : "";
+}
 
 /* ===== Live-rail / toast machinery ===== */
 let _highestTurnSeen = -1;        // -1 = never rendered; 0+ = highest turn # already displayed
@@ -1567,35 +1849,58 @@ function pushLiveCard(t, stream) {
 }
 
 function updateThroneUtterance(t, state) {
-	const root = document.getElementById("throne-utterance");
-	const txt = document.getElementById("ut-text");
+	const root = els.utThrone;
 	const turnEl = document.getElementById("ut-turn");
-	if (!root || !txt) return;
+	if (!root) return;
 	if (!t) {
 		// no turns yet — idle copy reflects state
+		let line = "The Ring waits.";
 		if (state && state.status && state.status !== "active" && TERMINAL_COPY[state.status]) {
-			txt.textContent = TERMINAL_COPY[state.status].verdict;
-		} else {
-			txt.textContent = "The Ring waits.";
+			line = TERMINAL_COPY[state.status].verdict;
 		}
+		pushUtteranceText(els.utThroneStack, line);
 		root.removeAttribute("data-winner");
 		if (turnEl) turnEl.textContent = "";
 		return;
 	}
 	const winner = (t.throne && t.throne.winner) || "";
-	txt.textContent = throneLine(t, state) || "—";
+	pushUtteranceText(els.utThroneStack, throneLine(t, state) || (t.throne && t.throne.reasoning) || "—");
 	root.setAttribute("data-winner", winner);
 	if (turnEl) turnEl.textContent = `Turn ${t.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
-	// brief flash to draw the eye
-	root.classList.remove("flash");
-	void root.offsetWidth;
-	root.classList.add("flash");
+	flashSpeaking(root);
+}
+
+// emitTurnVoices stages the three voices with a deliberate gap so the Throne
+// always lands after Order and Shadow — read as a sequence, not a chord.
+function emitTurnVoices(t, state, opts) {
+	const stagger = (opts && opts.stagger !== false);
+	const order  = t.order  || {};
+	const shadow = t.shadow || {};
+	const doOrder = () => {
+		const r = reasoningFor(order) || "—";
+		pushUtteranceText(els.utOrderStack, r);
+		if (els.utOrderMove) els.utOrderMove.textContent = moveLabel(order);
+		flashSpeaking(els.utOrder);
+	};
+	const doShadow = () => {
+		const r = reasoningFor(shadow) || "—";
+		pushUtteranceText(els.utShadowStack, r);
+		if (els.utShadowMove) els.utShadowMove.textContent = moveLabel(shadow);
+		flashSpeaking(els.utShadow);
+	};
+	const doThrone = () => updateThroneUtterance(t, state);
+	if (!stagger) { doOrder(); doShadow(); doThrone(); return; }
+	doOrder();
+	setTimeout(doShadow, 750);
+	setTimeout(doThrone, 1500);
 }
 
 /* ===== Summoning placeholders + hint cycling ===== */
 let _lastTapSource = null;
 let _placeholderEl = null;
 let _hintCycleTimer = null;
+let _isSummoning = false;       // true between tap accepted and new turn arrived
+let _summoningHoldTimer = null; // delays the triggered→summoning handoff
 
 const HINT_STAGES = [
 	"The Ring stirs.",
@@ -1646,6 +1951,10 @@ function clearSummoningPlaceholder() {
 		setTimeout(() => _placeholderEl && _placeholderEl.remove(), 620);
 	}
 	_placeholderEl = null;
+	if (_summoningHoldTimer) {
+		clearTimeout(_summoningHoldTimer);
+		_summoningHoldTimer = null;
+	}
 }
 
 function handleNewTurns(turnsSortedNewestFirst, state) {
@@ -1659,10 +1968,10 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 		// First render — DON'T seed historical turns into the rail. The rail
 		// is a "what just happened" ticker; the chronicle below is the archive.
 		// Just remember the top so future fresh-turn detection works, and
-		// update the throne utterance to show the most recent verdict.
+		// fill the utterance cards with the most recent turn (no stagger).
 		_firstRender = false;
 		_highestTurnSeen = top;
-		updateThroneUtterance(turnsSortedNewestFirst[0], state);
+		emitTurnVoices(turnsSortedNewestFirst[0], state, { stagger: false });
 		return;
 	}
 
@@ -1680,8 +1989,11 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	}
 	if (fresh.length === 0) return;
 
-	// Real turn(s) arrived — clear any in-flight summoning placeholder + toast
+	// Real turn(s) arrived — clear any in-flight summoning placeholder + toast.
+	// Drop the "summoning" red glow now that we have a verdict to show.
 	clearSummoningPlaceholder();
+	_isSummoning = false;
+	if (window.setEyeState && !terminal) window.setEyeState("idle");
 	els.tapHint.textContent = HINT_ORDERED;
 	for (const t of fresh.slice().reverse()) {
 		pushLiveCard(t, true);   // stream → staggered chip reveal
@@ -1689,7 +2001,8 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	_lastTapSource = null;
 	_highestTurnSeen = top;
 	AUDIO.playTurn(fresh[0], state);
-	updateThroneUtterance(turnsSortedNewestFirst[0], state);
+	// Stagger Order → Shadow → Throne so each voice gets its own beat.
+	emitTurnVoices(fresh[0], state, { stagger: true });
 }
 
 /* ===== Connection state ===== */
@@ -1913,6 +2226,9 @@ async function replay() {
 		lastSig = "";
 		AUDIO.resetForReplay();
 		clearSummoningPlaceholder();
+		_isSummoning = false;
+		// Reset snapshotted a row to the Games DB — invalidate the Chronicles cache.
+		if (typeof window.__chroniclesInvalidate === "function") window.__chroniclesInvalidate();
 		if (els.liveList) els.liveList.innerHTML = "";
 		els.eyeWrap.classList.remove("eye-dim", "climax-rage", "climax-flare", "climax-fade");
 		if (window.setEyeState) window.setEyeState("idle");
@@ -1993,18 +2309,26 @@ els.tapBtn.addEventListener("click", async () => {
 			// Kick off the visible "summoning" state — placeholder card, toast,
 			// and hint text cycling through faction stages while the worker thinks.
 			startSummoning("Tap to Summon");
+			_isSummoning = true;
 			setTimeout(poll, 300);
 		}
 	} catch (err) {
 		console.warn("[ring-war] tap failed:", err);
 		els.tapHint.textContent = everConnected ? HINT_DEAF : HINT_AWAITING;
+		_isSummoning = false;
 		if (everConnected) setConn("awaiting", "Reconnecting");
 	} finally {
 		setTimeout(() => {
 			els.tapBtn.classList.remove("tapping");
 			if (!terminal) els.tapBtn.disabled = false;
-			// Return to idle palette unless the game has ended on this turn
-			if (!terminal && window.setEyeState) window.setEyeState("idle");
+			// Hand off from the sharp "triggered" red flash to the sustained
+			// "summoning" red breath — only if a tap actually fired. The
+			// summoning state holds until handleNewTurns sees fresh turns or
+			// the tap errors. Without this, the red flash clipped at ~1.1s,
+			// long before the worker's 5–15s Order→Shadow→Throne loop returned.
+			if (!terminal && window.setEyeState) {
+				window.setEyeState(_isSummoning ? "summoning" : "idle");
+			}
 		}, 1100);
 	}
 });
@@ -2144,6 +2468,75 @@ els.voice.addEventListener("change", (e) => {
 	if (e.target.checked && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
 });
 
+/* ===== Chronicles panel — prior games archived by /api/reset ===== */
+(function initChronicles() {
+	const toggle = document.getElementById("chronicles-toggle");
+	const panel  = document.getElementById("chronicles-panel");
+	const list   = document.getElementById("chronicles-list");
+	const empty  = document.getElementById("chronicles-empty");
+	const count  = document.getElementById("chronicles-count");
+	if (!toggle || !panel || !list) return;
+
+	let loaded = false;
+	let loading = false;
+
+	function outcomeLabel(o) {
+		if (o === "order")  return "Order won";
+		if (o === "shadow") return "Shadow won";
+		if (o === "draw")   return "Stalemate";
+		return "Abandoned";
+	}
+	function fmtDateShort(iso) {
+		if (!iso) return "—";
+		const d = new Date(iso);
+		if (isNaN(d)) return iso;
+		return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+	}
+	function render(games) {
+		count.textContent = String(games.length);
+		if (games.length === 0) {
+			empty.style.display = "";
+			list.innerHTML = "";
+			return;
+		}
+		empty.style.display = "none";
+		list.innerHTML = games.map((g) => `
+			<li class="chronicle-row" data-outcome="${escapeHTML(g.outcome || "abandoned")}">
+				<div class="cr-id">${escapeHTML(g.gameId || "Game")}</div>
+				<div class="cr-meta">${escapeHTML(fmtDateShort(g.ended || g.started))}</div>
+				<div class="cr-meta">${g.totalTurns ?? 0} turns</div>
+				<div class="cr-outcome">${escapeHTML(outcomeLabel(g.outcome))}</div>
+				${g.summary ? `<p class="cr-summary">${escapeHTML(g.summary)}</p>` : ""}
+			</li>
+		`).join("");
+	}
+	async function load() {
+		if (loaded || loading) return;
+		loading = true;
+		try {
+			const r = await fetch("/api/games", { cache: "no-store" });
+			if (!r.ok) throw new Error("games http " + r.status);
+			const payload = await r.json();
+			render(Array.isArray(payload.games) ? payload.games : []);
+			loaded = true;
+		} catch (err) {
+			console.warn("[chronicles] fetch failed:", err);
+			empty.textContent = "Couldn't reach the archive.";
+			empty.style.display = "";
+		} finally {
+			loading = false;
+		}
+	}
+	toggle.addEventListener("click", () => {
+		const open = toggle.getAttribute("aria-expanded") === "true";
+		toggle.setAttribute("aria-expanded", open ? "false" : "true");
+		panel.hidden = open;
+		if (!open) load();
+	});
+	// After a successful reset/replay, invalidate so the next open re-fetches.
+	window.__chroniclesInvalidate = function () { loaded = false; };
+})();
+
 /* ===== Cinematic flourishes: periodic title glitch ===== */
 (function periodicGlitch() {
 	const titleEl = document.getElementById("title-text");
@@ -2182,6 +2575,9 @@ function stopShader() {} // three.js scene handles its own lifecycle
 	const STATE_PALETTES = {
 		idle:        { warm: [0.62, 0.92, 0.55], hot: [0.22, 0.58, 0.22], deep: [0.04, 0.16, 0.06], intensity: 0.95 },
 		triggered:   { warm: [1.00, 0.94, 0.70], hot: [1.00, 0.20, 0.06], deep: [0.78, 0.06, 0.02], intensity: 1.18 },
+		// Sustained "the worker is thinking" red — dimmer than triggered so the
+		// long hold doesn't blow the eyes out, but still unambiguously hot.
+		summoning:   { warm: [0.96, 0.78, 0.58], hot: [0.88, 0.26, 0.10], deep: [0.50, 0.05, 0.02], intensity: 1.05 },
 		destroyed:   { warm: [0.78, 0.74, 0.70], hot: [0.42, 0.34, 0.30], deep: [0.15, 0.12, 0.10], intensity: 0.55 },
 		exfiltrated: { warm: [1.00, 1.00, 1.00], hot: [0.78, 0.88, 1.00], deep: [0.30, 0.45, 0.78], intensity: 1.10 },
 		stalemate:   { warm: [0.38, 0.34, 0.28], hot: [0.22, 0.19, 0.16], deep: [0.10, 0.08, 0.06], intensity: 0.42 },

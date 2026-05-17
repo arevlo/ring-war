@@ -13,7 +13,7 @@ describe("corrupt_vault", () => {
 
 		const delta = await corrupt_vault.execute({}, makeState(), ctx);
 
-		expect(delta).toEqual({ integrityDelta: -6 });
+		expect(delta).toEqual({ integrityDelta: -12 });
 		expect(appendCalls).toHaveLength(1);
 		expect(appendCalls[0].block_id).not.toBe("ring-1");
 	});
@@ -26,7 +26,7 @@ describe("corrupt_vault", () => {
 
 		const delta = await corrupt_vault.execute({}, makeState(), ctx);
 
-		expect(delta).toEqual({ integrityDelta: -6 });
+		expect(delta).toEqual({ integrityDelta: -12 });
 		expect(appendCalls).toHaveLength(0);
 	});
 });

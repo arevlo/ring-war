@@ -16,7 +16,7 @@ describe("leak_whisper", () => {
 			ctx,
 		);
 
-		expect(delta).toEqual({ secrecyDelta: -4 });
+		expect(delta).toEqual({ secrecyDelta: -9 });
 		expect(createCommentCalls).toHaveLength(1);
 		const call = createCommentCalls[0] as {
 			parent: { page_id: string };
@@ -37,7 +37,7 @@ describe("leak_whisper", () => {
 			ctx,
 		);
 
-		expect(delta).toEqual({ secrecyDelta: -4 });
+		expect(delta).toEqual({ secrecyDelta: -9 });
 		expect(createCommentCalls).toHaveLength(0);
 	});
 });

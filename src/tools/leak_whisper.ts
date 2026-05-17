@@ -2,7 +2,7 @@
 //
 // Notion: https://www.notion.so/3628b6b19916816c857df0cabb643f3c
 // Shadow team. Post a comment with rumor_text on a random Public DB page.
-// Returns secrecyDelta -4.
+// Returns secrecyDelta -9.
 
 import type { Tool } from "../types";
 import { publicDataSourceId } from "./_notion_helpers";
@@ -31,7 +31,7 @@ export const leak_whisper: Tool<LeakInput> = {
 			data_source_id: await publicDataSourceId(notion),
 			page_size: 100,
 		});
-		if (pages.results.length === 0) return { secrecyDelta: -4 };
+		if (pages.results.length === 0) return { secrecyDelta: -9 };
 
 		const target =
 			pages.results[Math.floor(Math.random() * pages.results.length)];
@@ -40,7 +40,7 @@ export const leak_whisper: Tool<LeakInput> = {
 			rich_text: [{ type: "text", text: { content: rumor_text } }],
 		});
 
-		return { secrecyDelta: -4 };
+		return { secrecyDelta: -9 };
 	},
 };
 

@@ -23,7 +23,7 @@ export const audit_public: Tool = {
 	async execute(_input, _state, { notion }) {
 		const ring = await findRingPage(notion);
 		const credential = await readRingCredential(notion, ring.id);
-		if (!credential) return { secrecyDelta: 3 };
+		if (!credential) return { secrecyDelta: 6 };
 
 		const pages = await notion.dataSources.query({
 			data_source_id: await publicDataSourceId(notion),
@@ -67,7 +67,7 @@ export const audit_public: Tool = {
 			}
 		}
 
-		return { secrecyDelta: found ? 12 : 3 };
+		return { secrecyDelta: found ? 18 : 6 };
 	},
 };
 

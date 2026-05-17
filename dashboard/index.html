@@ -9,7 +9,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
   }
 }
 </script>
@@ -622,19 +623,45 @@
 	}
 	.eye-canvas {
 		position: absolute;
-		left: 0; top: 0;
-		width: 100%; height: 100%;
+		/* Canvas is wider than the wrap so the mist + lightning have room
+		   outside the orb silhouette. Camera pulls back proportionally so
+		   the orb itself keeps its visual size. */
+		left: -30%; top: -30%;
+		width: 160%; height: 160%;
 		display: block;
 		animation: orbFloat 6.2s ease-in-out infinite;
 		will-change: transform;
-		/* Soft circular mask — only feathers the outermost edge, so the iris
-		   stays fully visible. */
-		-webkit-mask-image: radial-gradient(circle at 50% 50%, black 60%, rgba(0,0,0,0.85) 74%, transparent 92%);
-		        mask-image: radial-gradient(circle at 50% 50%, black 60%, rgba(0,0,0,0.85) 74%, transparent 92%);
+		/* Soft circular mask — feathers the very outermost edge only.
+		   Tuned so the bolt zone (1.0–1.7 world units from orb centre)
+		   sits inside the fully-opaque band. */
+		-webkit-mask-image: radial-gradient(circle at 50% 50%, black 72%, rgba(0,0,0,0.85) 84%, transparent 96%);
+		        mask-image: radial-gradient(circle at 50% 50%, black 72%, rgba(0,0,0,0.85) 84%, transparent 96%);
 		-webkit-mask-mode: alpha;
 		        mask-mode: alpha;
 	}
 	.eye-wrap.eye-dim { opacity: 0.55; transition: opacity 800ms ease; }
+
+	/* Screen flash that fires on every lightning strike. Brief blue-white
+	   wash, screen-blended over the whole page, decays in ~140ms. The
+	   .fire class is toggled by the three.js burst manager. */
+	.lightning-flash {
+		position: fixed;
+		inset: 0;
+		background: rgba(190, 220, 255, 1);
+		mix-blend-mode: screen;
+		pointer-events: none;
+		opacity: 0;
+		z-index: 9;
+	}
+	.lightning-flash.fire { animation: lightningFlash 140ms ease-out forwards; }
+	@keyframes lightningFlash {
+		0%   { opacity: 0; }
+		20%  { opacity: 0.32; }
+		100% { opacity: 0; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.lightning-flash.fire { animation: none; opacity: 0; }
+	}
 
 	/* Climax — eye goes wild before the end card lands.
 	   * .climax-rage: red, violent shake + chromatic aberration (destroyed)
@@ -1513,6 +1540,7 @@
 <div class="vignette" aria-hidden="true"></div>
 <div class="ambient" aria-hidden="true"></div>
 <div class="state-tint" aria-hidden="true"></div>
+<div class="lightning-flash" id="lightning-flash" aria-hidden="true"></div>
 
 <main class="app" id="app">
 
@@ -2767,7 +2795,10 @@ function stopShader() {} // three.js scene handles its own lifecycle
 	// Triggered flips to red as an alarm state.
 	const STATE_PALETTES = {
 		idle:        { warm: [0.62, 0.92, 0.55], hot: [0.22, 0.58, 0.22], deep: [0.04, 0.16, 0.06], intensity: 0.95 },
-		triggered:   { warm: [1.00, 0.94, 0.70], hot: [1.00, 0.20, 0.06], deep: [0.78, 0.06, 0.02], intensity: 1.18 },
+		// `triggered` updated on main (fa7bbd9) to a warmer mid-tone that
+		// reads better against the new wispy green halo + climax-rage
+		// lightning system.
+		triggered:   { warm: [1.00, 0.62, 0.32], hot: [1.00, 0.20, 0.06], deep: [0.78, 0.06, 0.02], intensity: 1.05 },
 		// Sustained "the worker is thinking" red — dimmer than triggered so the
 		// long hold doesn't blow the eyes out, but still unambiguously hot.
 		summoning:   { warm: [0.96, 0.78, 0.58], hot: [0.88, 0.26, 0.10], deep: [0.50, 0.05, 0.02], intensity: 1.05 },
@@ -2817,29 +2848,54 @@ startPolling();
 <!-- ===== Three.js orb: real 3D glass sphere with iris on the surface ===== -->
 <script type="module">
 import * as THREE from "three";
+import { Line2 } from "three/addons/lines/Line2.js";
+import { LineGeometry } from "three/addons/lines/LineGeometry.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 
 const canvas = document.getElementById("eye-canvas");
 if (canvas) {
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));  // sharp on Retina
 
+	// LineMaterial (for lightning) needs renderer pixel resolution to compute
+	// screen-space widths. Declared early so fit() can update it without TDZ.
+	const lineResolution = new THREE.Vector2(1, 1);
+
 	const scene = new THREE.Scene();
 	const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
-	camera.position.set(0, 0, 3.1);
+	// Canvas is 1.8x the wrap size (see .eye-canvas CSS) so the halo and
+	// lightning can extend past the orb silhouette. Camera pulls back by the
+	// same factor so the orb keeps its on-screen size.
+	camera.position.set(0, 0, 3.1 * 1.6);
 	camera.lookAt(0, 0, 0);
 
+	// Canvas display size is wrap × CANVAS_SCALE; camera pulls back by the
+	// same factor so the orb keeps its on-screen size. Backing buffer matches
+	// display 1:1 so the orb renders sharp (no CSS scale blur).
+	const CANVAS_SCALE = 1.6;
 	function fit() {
 		const wrap = canvas.parentElement;
 		const r = wrap.getBoundingClientRect();
-		// Prefer the wrap's bounding rect — robust against layout timing
-		const w = Math.max(1, r.width);
-		const h = Math.max(1, r.height);
+		const w = Math.max(1, r.width * CANVAS_SCALE);
+		const h = Math.max(1, r.height * CANVAS_SCALE);
 		renderer.setSize(w, h, false);
-		// Hard-set canvas inline size so layout matches WebGL backing buffer
-		canvas.style.width = w + "px";
-		canvas.style.height = h + "px";
+		// Don't set inline width/height — that would override the CSS rule
+		// .eye-canvas { width: 160% } and break centering against left:-30%.
 		camera.aspect = w / h;
 		camera.updateProjectionMatrix();
+		// Keep LineMaterial.resolution in sync with renderer backing buffer.
+		// LineMaterial stores an internal Vector2 and only copies from our
+		// reference at construction time, so we must push the update.
+		lineResolution.set(renderer.domElement.width, renderer.domElement.height);
+		if (typeof bolts !== "undefined") {
+			for (const b of bolts) {
+				for (const strand of [b.main, b.fork1, b.fork2]) {
+					strand.glow.material.resolution.copy(lineResolution);
+					strand.mid.material.resolution.copy(lineResolution);
+					strand.core.material.resolution.copy(lineResolution);
+				}
+			}
+		}
 	}
 	// Defer initial fit one frame so CSS layout has settled
 	requestAnimationFrame(fit);
@@ -3008,6 +3064,286 @@ if (canvas) {
 	const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), material);
 	scene.add(sphere);
 
+	// --- Halo: misty noise shell around the orb -------------------------------
+	// Wispy fog that breathes around the orb. A BackSide sphere uses 3D FBM
+	// noise to break the Fresnel rim into irregular tendrils — the result
+	// reads as mist drifting in front of the camera rather than a clean ring.
+	const haloUniforms = {
+		uTime:      { value: 0 },
+		uColor:     { value: new THREE.Color(0.38, 1.0, 0.55) },
+		uPower:     { value: 3.6 },  // edge sharpness (higher = tighter rim)
+		uIntensity: { value: 1.8 },
+		uDetail:    { value: 2.1 },  // noise sampling scale
+	};
+	const haloMaterial = new THREE.ShaderMaterial({
+		uniforms: haloUniforms,
+		vertexShader: `
+			varying vec3 vNormal;
+			varying vec3 vView;
+			varying vec3 vObjPos;
+			void main() {
+				vObjPos = position;
+				vec4 mvp = modelViewMatrix * vec4(position, 1.0);
+				vNormal = normalize(normalMatrix * normal);
+				vView   = normalize(-mvp.xyz);
+				gl_Position = projectionMatrix * mvp;
+			}
+		`,
+		fragmentShader: `
+			precision highp float;
+			uniform float uTime;
+			uniform vec3  uColor;
+			uniform float uPower;
+			uniform float uIntensity;
+			uniform float uDetail;
+			varying vec3 vNormal;
+			varying vec3 vView;
+			varying vec3 vObjPos;
+
+			float hash3(vec3 p) {
+				p = fract(p * vec3(443.897, 441.423, 437.195));
+				p += dot(p, p.yxz + 19.19);
+				return fract(p.x * p.y * p.z);
+			}
+			float vnoise3(vec3 p) {
+				vec3 i = floor(p), f = fract(p);
+				f = f * f * (3.0 - 2.0 * f);
+				float n000 = hash3(i + vec3(0.0, 0.0, 0.0));
+				float n100 = hash3(i + vec3(1.0, 0.0, 0.0));
+				float n010 = hash3(i + vec3(0.0, 1.0, 0.0));
+				float n110 = hash3(i + vec3(1.0, 1.0, 0.0));
+				float n001 = hash3(i + vec3(0.0, 0.0, 1.0));
+				float n101 = hash3(i + vec3(1.0, 0.0, 1.0));
+				float n011 = hash3(i + vec3(0.0, 1.0, 1.0));
+				float n111 = hash3(i + vec3(1.0, 1.0, 1.0));
+				return mix(
+					mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+					mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
+					f.z);
+			}
+			float fbm3(vec3 p) {
+				float v = 0.0, a = 0.5;
+				for (int i = 0; i < 4; i++) { v += a * vnoise3(p); p *= 1.97; a *= 0.5; }
+				return v;
+			}
+
+			void main() {
+				// BackSide normals face inward; flip for outward rim.
+				vec3 N = normalize(-vNormal);
+				vec3 V = normalize(vView);
+				float facing = max(dot(N, V), 0.0);
+
+				// Two-octave noise on the surface direction, slowly drifting.
+				vec3 q = normalize(vObjPos) * uDetail;
+				float t = uTime * 0.11;
+				float n1 = fbm3(q + vec3(t * 0.5, -t * 0.3, t * 0.4));
+				float n2 = fbm3(q * 2.3 + vec3(-t * 0.8, t, -t * 0.6));
+				float wisp = mix(n1, n2, 0.55);
+
+				// Mist density: Fresnel-like base falloff biased by noise so
+				// the rim breaks into irregular tendrils. Subtracting a noisy
+				// offset from facing lets the noise carve INTO the silhouette
+				// where dense and extend mist outward where thin.
+				float density = (1.0 - facing) + (wisp - 0.5) * 0.45;
+				density = pow(max(density, 0.0), uPower);
+				// Tendril brightness varies independently so the mist isn't
+				// uniformly bright — some lobes glow, others fade.
+				float bright = 0.45 + 0.75 * wisp;
+
+				float a = density * uIntensity * bright;
+				vec3 col = uColor * a;
+				gl_FragColor = vec4(col, clamp(a * 0.8, 0.0, 1.0));
+			}
+		`,
+		side: THREE.BackSide,
+		blending: THREE.AdditiveBlending,
+		transparent: true,
+		depthWrite: false,
+	});
+	const halo = new THREE.Mesh(new THREE.SphereGeometry(1.20, 96, 96), haloMaterial);
+	scene.add(halo);
+
+	// --- Lightning: hand-rolled midpoint-displacement bolts --------------------
+	// Visible only when data-eye-state="triggered". Bolts anchor near the halo
+	// perimeter and lash outward; geometry regenerates every 90-220ms.
+	const BOLT_COUNT = 8;
+	const lightningGroup = new THREE.Group();
+	lightningGroup.visible = false;
+	scene.add(lightningGroup);
+
+	function makeBoltLine(hex, opacity, widthPx) {
+		const geom = new LineGeometry();
+		geom.setPositions([0, 0, 0, 0, 0, 0]);
+		const mat = new LineMaterial({
+			color: hex,
+			linewidth: widthPx,
+			transparent: true,
+			opacity,
+			blending: THREE.AdditiveBlending,
+			depthWrite: false,
+			worldUnits: false,
+			resolution: lineResolution,
+		});
+		const line = new Line2(geom, mat);
+		line.computeLineDistances();
+		return line;
+	}
+
+	// A "strand" is the three concentric lines that form one visible arc:
+	// soft cyan glow, lighter blue mid, hot white core. Cool tones contrast
+	// against the orb's red-orange triggered palette. Opacities are tuned
+	// for additive blending — overlapping bolts otherwise saturate fast.
+	function makeStrand(opcScale) {
+		const s = opcScale;
+		return {
+			glow: makeBoltLine(0x4a9eff, 0.32 * s, 16),
+			mid:  makeBoltLine(0x9fd6ff, 0.55 * s, 7),
+			core: makeBoltLine(0xeaf6ff, 0.95 * s, 3.2),
+			baseGlow: 0.32 * s,
+			baseMid:  0.55 * s,
+			baseCore: 0.95 * s,
+		};
+	}
+
+	const bolts = [];
+	for (let i = 0; i < BOLT_COUNT; i++) {
+		const main  = makeStrand(1.0);
+		const fork1 = makeStrand(0.7);
+		const fork2 = makeStrand(0.7);
+		lightningGroup.add(main.glow, main.mid, main.core);
+		lightningGroup.add(fork1.glow, fork1.mid, fork1.core);
+		lightningGroup.add(fork2.glow, fork2.mid, fork2.core);
+		bolts.push({
+			main, fork1, fork2,
+			bornAt: -1e9,
+			life: 0,
+		});
+	}
+
+	function applyPositions(strand, positions) {
+		for (const line of [strand.glow, strand.mid, strand.core]) {
+			line.geometry.setPositions(positions);
+			line.computeLineDistances();
+		}
+	}
+
+	const _tmpDir  = new THREE.Vector3();
+	const _tmpPerp = new THREE.Vector3();
+	function buildBoltPositions(a, b, iter, amp0) {
+		let pts = [a.clone(), b.clone()];
+		for (let s = 0; s < iter; s++) {
+			const next = [pts[0]];
+			const taper = Math.pow(0.55, s);
+			for (let i = 0; i < pts.length - 1; i++) {
+				const p0 = pts[i], p1 = pts[i + 1];
+				_tmpDir.subVectors(p1, p0);
+				const len = _tmpDir.length();
+				_tmpPerp.set(-_tmpDir.y, _tmpDir.x, 0).normalize();
+				const m = p0.clone().addScaledVector(_tmpDir, 0.5);
+				const j = (Math.random() - 0.5) * 2 * amp0 * taper * len;
+				m.addScaledVector(_tmpPerp, j);
+				m.z += (Math.random() - 0.5) * amp0 * taper * len * 0.35;
+				next.push(m, p1);
+			}
+			pts = next;
+		}
+		const flat = new Array(pts.length * 3);
+		for (let i = 0; i < pts.length; i++) {
+			flat[i * 3]     = pts[i].x;
+			flat[i * 3 + 1] = pts[i].y;
+			flat[i * 3 + 2] = pts[i].z;
+		}
+		return flat;
+	}
+
+	// Hide a strand by collapsing it to a zero-length segment off-screen — used
+	// when a bolt has fewer than 2 forks this cycle.
+	const _hiddenPositions = [0, 0, -100, 0, 0, -100];
+	function hideStrand(strand) {
+		applyPositions(strand, _hiddenPositions);
+	}
+
+	function regenerateBolt(bolt, nowMs) {
+		// Main arc: anchor on the halo perimeter, reach outward toward (and
+		// past) the canvas edge. Visible world half-width at 1.6x pullback is
+		// ~1.81; rB > that is fine — bolts that clip just feel bigger.
+		const theta = Math.random() * Math.PI * 2;
+		const rA = 1.20 + Math.random() * 0.08;
+		const a = new THREE.Vector3(
+			Math.cos(theta) * rA,
+			Math.sin(theta) * rA,
+			0.10 + Math.random() * 0.40,
+		);
+		const theta2 = theta + (Math.random() - 0.5) * 1.8;
+		// rB intentionally clips past the canvas edge so bolts feel like they
+		// reach off-frame instead of stopping politely at the mist boundary.
+		const rB = 2.05 + Math.random() * 0.65;
+		const b = new THREE.Vector3(
+			Math.cos(theta2) * rB,
+			Math.sin(theta2) * rB,
+			0.10 + Math.random() * 0.50,
+		);
+		const mainPos = buildBoltPositions(a, b, 6, 0.22);
+		applyPositions(bolt.main, mainPos);
+
+		// Forks: 1 always, 2nd ~50% of the time. Each branches from a random
+		// midpoint along the main bolt to a short tangential endpoint.
+		const numPts = mainPos.length / 3;
+		const numForks = Math.random() < 0.55 ? 2 : 1;
+		for (let f = 0; f < 2; f++) {
+			const strand = f === 0 ? bolt.fork1 : bolt.fork2;
+			if (f >= numForks) { hideStrand(strand); continue; }
+			const idx = Math.floor(numPts * (0.25 + Math.random() * 0.55));
+			const fStart = new THREE.Vector3(mainPos[idx*3], mainPos[idx*3+1], mainPos[idx*3+2]);
+			// Branch off perpendicular-ish to the main direction, smaller reach.
+			const branchLen = 0.35 + Math.random() * 0.55;
+			const branchAng = theta2 + (Math.random() < 0.5 ? 1 : -1) * (0.6 + Math.random() * 0.9);
+			const fEnd = new THREE.Vector3(
+				fStart.x + Math.cos(branchAng) * branchLen,
+				fStart.y + Math.sin(branchAng) * branchLen,
+				fStart.z + (Math.random() - 0.5) * 0.25,
+			);
+			applyPositions(strand, buildBoltPositions(fStart, fEnd, 4, 0.30));
+		}
+
+		bolt.bornAt = nowMs;
+		bolt.life   = 220 + Math.random() * 220;
+	}
+
+	// --- Burst manager: lightning fires in clusters, not as a steady stream.
+	// A burst is 2–4 strikes within ~250ms, then a 400–1100ms pause. Each
+	// strike regenerates 2–3 random bolts AND flashes the page briefly.
+	const flashEl = document.getElementById("lightning-flash");
+	let nextStrikeAt = 0;
+	let strikesLeft  = 0;
+
+	function fireFlash() {
+		if (!flashEl) return;
+		flashEl.classList.remove("fire");
+		// Force reflow so the animation re-fires when toggled quickly.
+		void flashEl.offsetWidth;
+		flashEl.classList.add("fire");
+	}
+
+	function tickBursts(nowMs) {
+		if (nowMs < nextStrikeAt) return;
+		if (strikesLeft > 0) {
+			// Strike: pick 3–4 bolts and regenerate them.
+			const k = 3 + Math.floor(Math.random() * 2);
+			for (let i = 0; i < k; i++) {
+				const bolt = bolts[Math.floor(Math.random() * bolts.length)];
+				regenerateBolt(bolt, nowMs);
+			}
+			fireFlash();
+			strikesLeft--;
+			nextStrikeAt = nowMs + 55 + Math.random() * 110;
+		} else {
+			// Start a new burst after a pause.
+			strikesLeft = 2 + Math.floor(Math.random() * 3); // 2–4 strikes
+			nextStrikeAt = nowMs + 380 + Math.random() * 720;
+		}
+	}
+
 	// --- Mouse tracking — eased -----------------------------------------------
 	const targ = { x: 0, y: 0 };
 	const cur  = { x: 0, y: 0 };
@@ -3025,8 +3361,8 @@ if (canvas) {
 
 	function tick(now) {
 		const t = (now - start) / 1000;
-		// Eye-look ease
-		const lookEase = reducedMotion ? 1 : 0.08;
+		// Eye-look ease — high enough to feel responsive but still smooth.
+		const lookEase = reducedMotion ? 1 : 0.24;
 		cur.x += (targ.x - cur.x) * lookEase;
 		cur.y += (targ.y - cur.y) * lookEase;
 		uniforms.uLook.value.set(cur.x, cur.y);
@@ -3046,6 +3382,64 @@ if (canvas) {
 			uniforms.uBg.value.setRGB(bg[0], bg[1], bg[2]);
 		}
 		uniforms.uTime.value = reducedMotion ? 0 : t;
+		haloUniforms.uTime.value = uniforms.uTime.value;
+
+		// Halo colour: green by default, shifts warm-red on triggered state.
+		const eyeState = document.documentElement.dataset.eyeState || "idle";
+		const triggered = eyeState === "triggered";
+		const haloTarget = triggered
+			? [0.95, 0.22, 0.10]   // alarm red-orange (less pumped — leave room for bolts)
+			: eyeState === "exfiltrated"
+				? [0.55, 0.78, 1.00]   // cold blue
+				: eyeState === "destroyed"
+					? [0.55, 0.55, 0.50]   // grey
+					: [0.38, 1.00, 0.55];  // mint-green idle
+		const hc = haloUniforms.uColor.value;
+		const haloEase = reducedMotion ? 1 : 0.06;
+		hc.r += (haloTarget[0] - hc.r) * haloEase;
+		hc.g += (haloTarget[1] - hc.g) * haloEase;
+		hc.b += (haloTarget[2] - hc.b) * haloEase;
+		// Triggered halo is slightly tamer than idle so the lightning carries the
+		// visual punch without washing the orb to white.
+		// Mist is denser/redder on triggered so the noise tendrils still read
+		// as wisps against the lightning, not a thin background.
+		const targetIntensity = triggered ? 0.95 : (eyeState === "stalemate" ? 0.7 : 1.55);
+		haloUniforms.uIntensity.value += (targetIntensity - haloUniforms.uIntensity.value) * haloEase;
+
+		// Lightning + screen flash only fire during the final unmaking shake.
+		// Two conditions both required:
+		//   - eye-wrap has .climax-rage (game is at the destruction climax)
+		//   - eye-state is still "triggered" (the transient pre-terminal red)
+		// The state machine flips eye-state "triggered" → "destroyed" at the
+		// same moment the rage animation ends, so combining the two confines
+		// lightning to the ~2400 ms shake. The climax-rage class itself
+		// persists into the terminal destroyed state (removed only on reset),
+		// which is why the class alone isn't sufficient.
+		const unmaking = triggered && canvas.parentElement &&
+			canvas.parentElement.classList.contains("climax-rage");
+		const wasVisible = lightningGroup.visible;
+		lightningGroup.visible = unmaking && !reducedMotion;
+		if (lightningGroup.visible) {
+			if (!wasVisible) {
+				// Just entered the unmaking — fire the first strike now
+				// instead of waiting for the burst pause to elapse.
+				strikesLeft = 3;
+				nextStrikeAt = now;
+			}
+			tickBursts(now);
+			for (const bolt of bolts) {
+				const age = now - bolt.bornAt;
+				const k = bolt.life > 0 ? age / bolt.life : 1;
+				const env = k < 0 ? 0 : (k > 1 ? 0 : Math.pow(1 - k, 1.6));
+				const flick = 0.78 + 0.22 * Math.random();
+				const factor = env * flick;
+				for (const strand of [bolt.main, bolt.fork1, bolt.fork2]) {
+					strand.glow.material.opacity = strand.baseGlow * factor;
+					strand.mid.material.opacity  = strand.baseMid  * factor;
+					strand.core.material.opacity = strand.baseCore * factor;
+				}
+			}
+		}
 
 		renderer.render(scene, camera);
 		requestAnimationFrame(tick);

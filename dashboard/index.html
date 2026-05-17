@@ -2352,6 +2352,12 @@ function showEnd(status) {
 	// 1) Drive the orb wild during the climax
 	if (climax.preState && window.setEyeState) window.setEyeState(climax.preState);
 	els.eyeWrap.classList.add(climax.class);
+	// Thunder cue for the destroyed-state climax — pairs with the lightning
+	// system that only fires while .climax-rage is on the eye-wrap. Other
+	// climaxes (flare for exfiltrated, fade for stalemate) don't get thunder.
+	if (status === "destroyed" && AUDIO && typeof AUDIO.playThunder === "function") {
+		AUDIO.playThunder();
+	}
 
 	// 2) Then settle to the terminal palette + reveal the end card
 	setTimeout(() => {
@@ -2537,6 +2543,12 @@ const AMBIENT_FILE = "mordor-aftermath.mp3";
 const AMBIENT_VOLUME_PLAYING = 0.18;
 const AMBIENT_VOLUME_DUCKED  = 0.06; // optional dip during the Throne audio
 
+// One-shot thunder cue that fires alongside the climax-rage lightning on
+// destroyed endgames. Volume just shy of full so the crack carries the
+// orb-breaking moment.
+const THUNDER_FILE = "endgame-thunder.wav";
+const THUNDER_VOLUME = 0.9;
+
 const AUDIO = (() => {
 	const cache = {};
 	function get(name) {
@@ -2587,6 +2599,34 @@ const AUDIO = (() => {
 	function duckAmbient(ducked) {
 		if (!ambient || ambient.paused) return;
 		ambient.volume = ducked ? AMBIENT_VOLUME_DUCKED : AMBIENT_VOLUME_PLAYING;
+	}
+
+	// One-shot thunder cue for the destroyed-state climax. Fires once per
+	// game — re-call only re-fires after a replay (the cached element is
+	// rewound on each call). Briefly ducks the ambient so the crack lands.
+	let thunder = null;
+	function getThunder() {
+		if (!thunder) {
+			thunder = new Audio(`/audio/${THUNDER_FILE}`);
+			thunder.preload = "auto";
+			thunder.volume = THUNDER_VOLUME;
+		}
+		return thunder;
+	}
+	function playThunder() {
+		if (!enabled) return;
+		const a = getThunder();
+		try { a.currentTime = 0; } catch (_) {}
+		a.volume = THUNDER_VOLUME;
+		duckAmbient(true);
+		// Restore the ambient ~4s later (the clip's natural length). Use a
+		// timer rather than `ended` so a tight cancellation can't strand the
+		// duck at low volume — same defensive pattern as the throne audio.
+		setTimeout(() => duckAmbient(false), 4200);
+		a.play().catch((e) => {
+			duckAmbient(false);
+			console.warn("[audio] thunder play failed:", e && e.name);
+		});
 	}
 
 	function stopAll() {
@@ -2744,6 +2784,7 @@ const AUDIO = (() => {
 		playTurn, playIntro, setEnabled,
 		isEnabled: () => enabled, resetForReplay,
 		startAmbient, stopAmbient, duckAmbient,
+		playThunder,
 	};
 })();
 

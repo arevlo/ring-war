@@ -1794,7 +1794,14 @@ function render(payload) {
 
 	const status = state.status || "active";
 	if (status !== "active" && TERMINAL_COPY[status]) showEnd(status);
-	else if (status === "active" && turns.length === 0) AUDIO.playIntro();
+	else if (status === "active" && turns.length === 0) {
+		AUDIO.playIntro();
+		// Fresh game: there are no historical turns to suppress, so clear the
+		// first-render flag now. Otherwise the very first turn that arrives
+		// would still trip the "seed only" branch in handleNewTurns and skip
+		// its audio cue.
+		_firstRender = false;
+	}
 }
 
 function turnHTML(t) {

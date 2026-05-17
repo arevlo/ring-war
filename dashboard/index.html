@@ -2530,6 +2530,13 @@ const BEAT_GAP_MS = 400;     // silence between consecutive clips (legacy: thron
 const SILENT_BEAT_MS = 2800; // when voice is muted, hold the on-screen Throne beat for this long
 const READ_BEAT_MS = 3500;   // how long Order/Shadow silent beats hold on-screen before advancing
 
+// Background ambient music. Loops indefinitely at a low volume so the
+// Throne voice (which plays at 1.0) is always clearly audible above it.
+// Volume picked by ear — 0.18 sits behind dialogue without disappearing.
+const AMBIENT_FILE = "mordor-aftermath.mp3";
+const AMBIENT_VOLUME_PLAYING = 0.18;
+const AMBIENT_VOLUME_DUCKED  = 0.06; // optional dip during the Throne audio
+
 const AUDIO = (() => {
 	const cache = {};
 	function get(name) {
@@ -2545,9 +2552,47 @@ const AUDIO = (() => {
 	let pendingIntro = false;
 	let seq = 0;
 
+	// Background music element. Kept OUT of `cache` so stopAll() can't pause
+	// it mid-game — the ambient track loops independent of the per-turn chain.
+	let ambient = null;
+	let ambientStarted = false;
+	function getAmbient() {
+		if (!ambient) {
+			ambient = new Audio(`/audio/${AMBIENT_FILE}`);
+			ambient.loop = true;
+			ambient.preload = "auto";
+			ambient.volume = AMBIENT_VOLUME_PLAYING;
+		}
+		return ambient;
+	}
+	async function startAmbient() {
+		if (!enabled) return;
+		const a = getAmbient();
+		if (!a.paused && ambientStarted) return;
+		try {
+			a.volume = AMBIENT_VOLUME_PLAYING;
+			await a.play();
+			ambientStarted = true;
+		} catch (e) {
+			// Autoplay block — will retry on next user gesture via the existing
+			// queueIntroOnInteraction listener (which also calls startAmbient).
+		}
+	}
+	function stopAmbient() {
+		if (ambient) {
+			try { ambient.pause(); } catch (_) {}
+			ambientStarted = false;
+		}
+	}
+	function duckAmbient(ducked) {
+		if (!ambient || ambient.paused) return;
+		ambient.volume = ducked ? AMBIENT_VOLUME_DUCKED : AMBIENT_VOLUME_PLAYING;
+	}
+
 	function stopAll() {
 		// Pause and reset every cached element — leftover playback from a
-		// previous turn can't bleed into a new one.
+		// previous turn can't bleed into a new one. NOTE: ambient is held
+		// outside `cache` so the background music keeps playing through.
 		for (const a of Object.values(cache)) {
 			try { a.pause(); a.currentTime = 0; } catch (_) {}
 		}
@@ -2629,7 +2674,14 @@ const AUDIO = (() => {
 			if (mySeq !== seq) return;
 			onBeat({ kind: "throne", clip: picks.throne });
 			if (enabled && picks.throne && picks.throne.file) {
-				await playOne(picks.throne.file, mySeq);
+				// Duck the background music while the Throne speaks so the
+				// verdict reads cleanly above the loop.
+				duckAmbient(true);
+				try {
+					await playOne(picks.throne.file, mySeq);
+				} finally {
+					duckAmbient(false);
+				}
 			} else {
 				await new Promise((r) => setTimeout(r, SILENT_BEAT_MS));
 			}
@@ -2646,6 +2698,9 @@ const AUDIO = (() => {
 			document.removeEventListener("pointerdown", fire);
 			document.removeEventListener("keydown", fire);
 			playIntro();
+			// Same user gesture that unblocks the intro also unblocks the
+			// ambient track — start it once and let the loop carry on.
+			startAmbient();
 		};
 		document.addEventListener("pointerdown", fire, { once: true });
 		document.addEventListener("keydown", fire, { once: true });
@@ -2662,6 +2717,8 @@ const AUDIO = (() => {
 		try { a.currentTime = 0; } catch (_) {}
 		try {
 			await a.play();
+			// Same gesture context — if intro could play, ambient can too.
+			startAmbient();
 			// Don't await `ended` here — the duration timer in playOne would,
 			// but the intro is a fire-and-forget special case.
 			if (mySeq !== seq) { try { a.pause(); a.currentTime = 0; } catch (_) {} }
@@ -2674,14 +2731,20 @@ const AUDIO = (() => {
 	function setEnabled(v) {
 		enabled = !!v;
 		localStorage.setItem(AUDIO_KEY, enabled ? "1" : "0");
-		if (!enabled) { seq++; stopAll(); }
+		if (!enabled) { seq++; stopAll(); stopAmbient(); }
+		else { startAmbient(); }
 	}
 	function resetForReplay() {
 		seq++;
 		stopAll();
 		introPlayed = false;
+		// Ambient keeps rolling across resets — don't restart it.
 	}
-	return { playTurn, playIntro, setEnabled, isEnabled: () => enabled, resetForReplay };
+	return {
+		playTurn, playIntro, setEnabled,
+		isEnabled: () => enabled, resetForReplay,
+		startAmbient, stopAmbient, duckAmbient,
+	};
 })();
 
 els.voice.checked = AUDIO.isEnabled();
@@ -2697,7 +2760,8 @@ els.voice.addEventListener("change", (e) => {
 // the page — typically the Tap to Summon button — fires it. This is what
 // makes the intro survive page reloads mid-game: render() used to only call
 // it when turns.length === 0, so reloading after any turn meant no intro.
-if (!isDemo) AUDIO.playIntro();
+// Same gesture is what starts the ambient loop (Mordor Aftermath).
+if (!isDemo) { AUDIO.playIntro(); AUDIO.startAmbient(); }
 
 /* ===== Chronicles panel — prior games archived by /api/reset ===== */
 (function initChronicles() {

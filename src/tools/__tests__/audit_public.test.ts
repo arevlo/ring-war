@@ -8,7 +8,7 @@ const credential = "SECRET-XYZ";
 const ringMarkdown = "Some preamble\n```\n" + credential + "\n```\nand after";
 
 describe("audit_public", () => {
-	it("returns +12 when credential is found and redacts in-place", async () => {
+	it("returns +18 when credential is found and redacts in-place", async () => {
 		const { ctx, updateBlockCalls } = makeMockNotion({
 			ringMarkdown,
 			publicPages: [{ id: "pub-1" }, { id: "pub-2" }],
@@ -47,7 +47,7 @@ describe("audit_public", () => {
 		});
 
 		const delta = await audit_public.execute({}, makeState(), ctx);
-		expect(delta).toEqual({ secrecyDelta: 12 });
+		expect(delta).toEqual({ secrecyDelta: 18 });
 		expect(updateBlockCalls).toHaveLength(1);
 		expect(updateBlockCalls[0].block_id).toBe("block-a");
 		const para = updateBlockCalls[0].paragraph as {
@@ -58,7 +58,7 @@ describe("audit_public", () => {
 		);
 	});
 
-	it("returns +3 when credential is not present anywhere", async () => {
+	it("returns +6 when credential is not present anywhere", async () => {
 		const { ctx, updateBlockCalls } = makeMockNotion({
 			ringMarkdown,
 			publicPages: [{ id: "pub-1" }],
@@ -82,7 +82,7 @@ describe("audit_public", () => {
 		});
 
 		const delta = await audit_public.execute({}, makeState(), ctx);
-		expect(delta).toEqual({ secrecyDelta: 3 });
+		expect(delta).toEqual({ secrecyDelta: 6 });
 		expect(updateBlockCalls).toHaveLength(0);
 	});
 });

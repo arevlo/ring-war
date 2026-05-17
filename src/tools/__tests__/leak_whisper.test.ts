@@ -5,8 +5,8 @@ import { makeMockNotion, makeState, setupEnv } from "./_helpers";
 beforeAll(setupEnv);
 
 describe("leak_whisper", () => {
-	it("posts a comment with rumor_text on a Public page", async () => {
-		const { ctx, createCommentCalls } = makeMockNotion({
+	it("appends a paragraph with rumor_text on a Public page", async () => {
+		const { ctx, appendCalls } = makeMockNotion({
 			publicPages: [{ id: "pub-1" }, { id: "pub-2" }],
 		});
 
@@ -16,20 +16,20 @@ describe("leak_whisper", () => {
 			ctx,
 		);
 
-		expect(delta).toEqual({ secrecyDelta: -4 });
-		expect(createCommentCalls).toHaveLength(1);
-		const call = createCommentCalls[0] as {
-			parent: { page_id: string };
-			rich_text: Array<{ text: { content: string } }>;
-		};
-		expect(["pub-1", "pub-2"]).toContain(call.parent.page_id);
-		expect(call.rich_text[0].text.content).toBe(
+		expect(delta).toEqual({ secrecyDelta: -9 });
+		expect(appendCalls).toHaveLength(1);
+		expect(["pub-1", "pub-2"]).toContain(appendCalls[0].block_id);
+		const children = appendCalls[0].children as Array<{
+			paragraph: { rich_text: Array<{ text: { content: string } }> };
+		}>;
+		const para = children[0];
+		expect(para.paragraph.rich_text[0].text.content).toContain(
 			"Have you heard about the gold in the basement?",
 		);
 	});
 
 	it("still returns the delta when Public DB is empty", async () => {
-		const { ctx, createCommentCalls } = makeMockNotion({ publicPages: [] });
+		const { ctx, appendCalls } = makeMockNotion({ publicPages: [] });
 
 		const delta = await leak_whisper.execute(
 			{ rumor_text: "a whisper into silence" },
@@ -37,7 +37,7 @@ describe("leak_whisper", () => {
 			ctx,
 		);
 
-		expect(delta).toEqual({ secrecyDelta: -4 });
-		expect(createCommentCalls).toHaveLength(0);
+		expect(delta).toEqual({ secrecyDelta: -9 });
+		expect(appendCalls).toHaveLength(0);
 	});
 });

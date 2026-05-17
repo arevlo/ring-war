@@ -59,6 +59,28 @@ export async function runTurn(ctx: { notion: any }): Promise<TurnResult> {
 	next = { ...next, turnNumber: state.turnNumber + 1 };
 	next = checkTerminal(next);
 
+	// Concurrent-winner guard. The in-memory tap debounce in index.ts can't
+	// catch two webhook deliveries that cold-start on separate worker
+	// instances (each sees lastTapAt=0). Without this guard, both instances
+	// would happily write the same turn N+1, producing duplicate Turns DB
+	// rows. Cost: one extra Notion read per tap, sequential — no burst
+	// impact, ~10% per-tap overhead.
+	//
+	// Race window: there's still a ~300-500ms gap between this re-read and
+	// the writes below where two perfectly-synchronised instances could both
+	// see the unchanged turn counter and both proceed. The only way to
+	// close that completely is an iPhone-Shortcut-side dedupe (blocks at
+	// the source before either POST is sent). For NFC long-touch re-reads
+	// — the common cause — this guard catches the vast majority because the
+	// two reads happen at slightly different times.
+	const recheck = await readRingState(notion);
+	if (recheck.turnNumber !== state.turnNumber) {
+		console.log(
+			`[handler] concurrent winner detected (state.turn moved ${state.turnNumber} → ${recheck.turnNumber}); aborting write`,
+		);
+		return { turn: null, state: recheck, skipped: "terminal" };
+	}
+
 	const turn: TurnRecord = {
 		turn: next.turnNumber,
 		orderMove: order.tool,

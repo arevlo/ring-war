@@ -15,3 +15,21 @@ RING_STATE_DB_ID=
 VAULT_DB_ID=
 TURNS_DB_ID=
 PUBLIC_DB_ID=
+
+# Optional. Chronicles DB — one row per finished game, written by /api/reset
+# before the Turns DB is cleared. If unset, the snapshot step is skipped and
+# the dashboard's "Past games" panel renders empty. Required properties on the
+# Notion database:
+#   Game ID         (Title)
+#   Started         (Date)
+#   Ended           (Date)
+#   Final holder    (Select: free / order / shadow)
+#   Final integrity (Number)
+#   Final secrecy   (Number)
+#   Final status    (Select: active / destroyed / exfiltrated / stalemate)
+#   Total turns     (Number)
+#   Order wins      (Number)
+#   Shadow wins     (Number)
+#   Outcome         (Select: order / shadow / draw / abandoned)
+#   Summary         (Text)
+GAMES_DB_ID=

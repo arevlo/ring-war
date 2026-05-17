@@ -2,7 +2,7 @@
 //
 // Notion: https://www.notion.so/3628b6b1991681c4b782c70d0bf72cba
 // Order team. Pull the Ring back into the Vault. holder = "order",
-// integrityDelta = +8, capAt100 = true.
+// integrityDelta = +14, capAt100 = true.
 
 import type { Tool } from "../types";
 import { findRingPage, paragraph } from "./_notion_helpers";
@@ -26,7 +26,7 @@ export const vault_ring: Tool = {
 				),
 			],
 		});
-		return { holder: "order", integrityDelta: 8, capAt100: true };
+		return { holder: "order", integrityDelta: 14, capAt100: true };
 	},
 };
 

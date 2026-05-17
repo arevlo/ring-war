@@ -111,6 +111,7 @@
 	/* State-driven hue shift on the SVG. Hue-rotate uses an RGB matrix so the
 	   green base shifts through to red / blue / desaturated as the state changes. */
 	[data-eye-state="triggered"]   .towers-bg { filter: hue-rotate(240deg) saturate(1.55) brightness(0.95) contrast(1.05); }
+	[data-eye-state="summoning"]   .towers-bg { filter: hue-rotate(232deg) saturate(1.30) brightness(0.92) contrast(1.02); transition: filter 1500ms ease; }
 	[data-eye-state="exfiltrated"] .towers-bg { filter: hue-rotate(110deg) saturate(0.90) brightness(1.05); }
 	[data-eye-state="destroyed"]   .towers-bg { filter: grayscale(0.75) brightness(0.60) contrast(0.95); }
 	[data-eye-state="stalemate"]   .towers-bg { filter: brightness(0.40) contrast(1.10) saturate(0.40); }
@@ -193,9 +194,20 @@
 				transparent 60%);
 	}
 	[data-eye-state="triggered"]    .ambient { background: radial-gradient(closest-side at 50% 50%, rgba(255, 50, 30, 0.55), rgba(180, 16, 14, 0.28) 30%, transparent 65%); animation: auraPulse 1100ms ease-out; }
+	[data-eye-state="summoning"]    .ambient { background: radial-gradient(closest-side at 50% 50%, rgba(220, 80, 40, 0.42), rgba(160, 30, 18, 0.22) 32%, transparent 68%); animation: summonBreath 3400ms ease-in-out infinite; }
 	[data-eye-state="destroyed"]    .ambient { opacity: 0.30; background: radial-gradient(closest-side at 50% 50%, rgba(180, 170, 150, 0.20), transparent 55%); }
 	[data-eye-state="exfiltrated"]  .ambient { background: radial-gradient(closest-side at 50% 50%, rgba(200, 220, 255, 0.45), rgba(90, 130, 220, 0.22) 30%, transparent 65%); animation: auraPulse 1100ms ease-out; }
 	[data-eye-state="stalemate"]    .ambient { opacity: 0.18; }
+
+	/* Sustained "summoning" breath — slower than auraPulse, doesn't end. Holds
+	   the red glow while the worker churns through Order → Shadow → Throne. */
+	@keyframes summonBreath {
+		0%, 100% { transform: translate(-50%, -50%) scale(1.00); opacity: 0.65; }
+		50%      { transform: translate(-50%, -50%) scale(1.08); opacity: 0.92; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		[data-eye-state="summoning"] .ambient { animation: none; }
+	}
 
 	@keyframes auraPulse {
 		0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.0; }
@@ -223,6 +235,7 @@
 		background: radial-gradient(ellipse at 50% 48%, rgba(60, 140, 60, 0.36), rgba(40, 100, 40, 0.18) 35%, transparent 65%);
 	}
 	[data-eye-state="triggered"]   .state-tint { opacity: 0.50; background: radial-gradient(ellipse at 50% 48%, rgba(255, 60, 30, 0.55), transparent 60%); animation: tintFlash 1100ms ease-out; }
+	[data-eye-state="summoning"]   .state-tint { opacity: 0.42; background: radial-gradient(ellipse at 50% 48%, rgba(220, 70, 36, 0.48), transparent 60%); animation: tintBreath 3200ms ease-in-out infinite; }
 	[data-eye-state="exfiltrated"] .state-tint { opacity: 0.45; background: radial-gradient(ellipse at 50% 48%, rgba(160, 200, 255, 0.55), transparent 60%); animation: tintFlash 1100ms ease-out; }
 	[data-eye-state="destroyed"]   .state-tint { opacity: 0.32; background: radial-gradient(ellipse at 50% 48%, rgba(140, 130, 110, 0.40), transparent 65%); }
 	[data-eye-state="stalemate"]   .state-tint { opacity: 0.18; background: radial-gradient(ellipse at 50% 48%, rgba(40, 40, 30, 0.40), transparent 60%); }
@@ -231,6 +244,13 @@
 		0%   { opacity: 0.0; }
 		20%  { opacity: 0.85; }
 		100% { opacity: var(--tint-rest, 0.35); }
+	}
+	@keyframes tintBreath {
+		0%, 100% { opacity: 0.30; }
+		50%      { opacity: 0.55; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		[data-eye-state="summoning"] .state-tint { animation: none; }
 	}
 
 	/* Scenery now comes from the painted towers backdrop. */
@@ -298,6 +318,9 @@
 	}
 	[data-eye-state="triggered"]   .orb-aura {
 		background: radial-gradient(circle at 50% 50%, rgba(255, 60, 30, 0.46) 0%, rgba(190, 30, 16, 0.26) 26%, rgba(120, 14, 10, 0.10) 50%, transparent 75%);
+	}
+	[data-eye-state="summoning"]   .orb-aura {
+		background: radial-gradient(circle at 50% 50%, rgba(220, 70, 30, 0.38) 0%, rgba(160, 28, 14, 0.22) 28%, rgba(100, 12, 8, 0.08) 52%, transparent 76%);
 	}
 	[data-eye-state="destroyed"]   .orb-aura { opacity: 0.45; background: radial-gradient(circle at 50% 50%, rgba(160, 150, 130, 0.22) 0%, rgba(70, 65, 55, 0.10) 35%, transparent 65%); }
 	[data-eye-state="exfiltrated"] .orb-aura { background: radial-gradient(circle at 50% 50%, rgba(190, 215, 255, 0.42) 0%, rgba(80, 130, 220, 0.22) 28%, rgba(40, 70, 150, 0.08) 55%, transparent 75%); }
@@ -380,7 +403,7 @@
 	/* ===== Header ===== */
 	.header {
 		display: grid;
-		grid-template-columns: 1fr auto auto auto;
+		grid-template-columns: 1fr auto auto auto auto;
 		align-items: center;
 		gap: 14px;
 		padding-bottom: 22px;
@@ -484,8 +507,10 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	/* Theme toggle */
-	.theme-toggle {
+	/* Mute toggle (replaces the old light/dark theme toggle — the icon shows
+	   which way you'd flip it: a speaker with sound waves when audio is
+	   playing, a speaker with a slash when muted). */
+	.mute-toggle {
 		appearance: none;
 		background: var(--surface);
 		color: var(--ink-soft);
@@ -499,12 +524,37 @@
 		padding: 0;
 		transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
 	}
-	.theme-toggle:hover { background: var(--surface-2); color: var(--amber); border-color: var(--rule-strong); }
-	.theme-toggle svg { width: 16px; height: 16px; transition: transform 360ms cubic-bezier(0.4, 0, 0.2, 1); }
-	[data-theme="light"] .theme-toggle .moon { display: none; }
-	[data-theme="light"] .theme-toggle .sun  { display: inline; }
-	[data-theme="dark"]  .theme-toggle .moon { display: inline; }
-	[data-theme="dark"]  .theme-toggle .sun  { display: none; }
+	.mute-toggle:hover { background: var(--surface-2); color: var(--amber); border-color: var(--rule-strong); }
+	.mute-toggle svg { width: 18px; height: 18px; }
+	/* aria-pressed="false" → audio ON,  aria-pressed="true" → muted. */
+	.mute-toggle[aria-pressed="false"] .ic-muted   { display: none; }
+	.mute-toggle[aria-pressed="false"] .ic-unmuted { display: inline; }
+	.mute-toggle[aria-pressed="true"]  .ic-muted   { display: inline; color: var(--mute); }
+	.mute-toggle[aria-pressed="true"]  .ic-unmuted { display: none; }
+
+	/* Reset button — sibling of mute-toggle, lets the operator wipe the
+	   current game from anywhere (vs waiting for the end-card to surface
+	   "Begin again"). Confirms before firing /api/reset so an accidental
+	   tap mid-tournament doesn't nuke the chronicle. */
+	.reset-btn {
+		appearance: none;
+		background: var(--surface);
+		color: var(--ink-soft);
+		border: 1px solid var(--rule);
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		cursor: pointer;
+		display: inline-grid;
+		place-items: center;
+		padding: 0;
+		transition: background 200ms ease, border-color 200ms ease, color 200ms ease, transform 320ms ease;
+	}
+	.reset-btn:hover { background: var(--surface-2); color: var(--amber); border-color: var(--rule-strong); }
+	.reset-btn:disabled { opacity: 0.5; cursor: progress; }
+	.reset-btn svg { width: 18px; height: 18px; }
+	.reset-btn.busy svg { animation: resetSpin 900ms linear infinite; }
+	@keyframes resetSpin { to { transform: rotate(360deg); } }
 
 	/* ===== Stats row ===== */
 	.stats {
@@ -806,6 +856,101 @@
 		100% { transform: translateY(0);    opacity: 1; }
 	}
 
+	/* ===== Single-panel utterance with cycling speaker ===== */
+	/* One card; per turn, three messages push through it:
+	   the winner's canonical act line, then the Throne's canonical verdict.
+	   The card border accents to the active speaker's color while they speak. */
+	.utterances {
+		display: flex;
+		justify-content: center;
+		width: 100%;
+		max-width: min(720px, 92vw);
+		margin: 0 auto 6px;
+	}
+	.utterance {
+		width: 100%;
+		text-align: center;
+		padding: 10px 22px 12px;
+		border-radius: 12px;
+		background:
+			linear-gradient(180deg,
+				color-mix(in oklab, var(--surface)   84%, transparent),
+				color-mix(in oklab, var(--surface-2) 78%, transparent));
+		backdrop-filter: blur(36px) saturate(1.40);
+		-webkit-backdrop-filter: blur(36px) saturate(1.40);
+		border: 1px solid color-mix(in oklab, var(--rule-strong) 78%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255,255,255,0.10),
+			0 10px 28px rgba(0,0,0,0.28);
+		transition:
+			border-color 400ms ease,
+			box-shadow 400ms ease;
+	}
+	/* Border accent follows the active speaker. */
+	.utterance[data-speaker="order"]  { border-color: color-mix(in oklab, var(--order)  45%, var(--rule-strong)); }
+	.utterance[data-speaker="shadow"] { border-color: color-mix(in oklab, var(--shadow) 45%, var(--rule-strong)); }
+	.utterance[data-speaker="throne"] { border-color: color-mix(in oklab, var(--throne) 45%, var(--rule-strong)); }
+
+	/* Stack: messages overlap during the cross-fade, then settle. Min-height
+	   sized for a single line of action copy; Throne verdicts that wrap to
+	   two lines auto-grow the panel. Keeps Order/Shadow beats compact. */
+	.ut-stack {
+		position: relative;
+		min-height: 2.4em;
+	}
+	.ut-msg {
+		display: block;
+		transition:
+			opacity 520ms ease,
+			transform 520ms cubic-bezier(0.34, 1.06, 0.64, 1);
+	}
+	.ut-msg .ut-label {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 10px;
+		font-size: 9.5px;
+		letter-spacing: 0.32em;
+		text-transform: uppercase;
+		font-weight: 700;
+		margin-bottom: 4px;
+	}
+	.ut-msg.order  .ut-speaker { color: var(--order); }
+	.ut-msg.shadow .ut-speaker { color: var(--shadow); }
+	.ut-msg.throne .ut-speaker { color: var(--throne); }
+	.ut-msg .ut-meta {
+		color: var(--ink-soft);
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-weight: 400;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: none;
+		opacity: 0.85;
+	}
+	.ut-msg .ut-text {
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-size: clamp(14px, 1.4vw, 17px);
+		line-height: 1.4;
+		color: var(--ink);
+		margin: 0;
+	}
+	.ut-stack .ut-msg.is-leaving {
+		position: absolute;
+		left: 0; right: 0; top: 0;
+		opacity: 0;
+		transform: translateY(-22px);
+		pointer-events: none;
+	}
+	.ut-stack .ut-msg.is-entering {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ut-msg,
+		.utterance { transition: none; }
+	}
+
 	/* ===== Timeline ===== */
 	.feed-section {
 		margin-top: 28px;
@@ -981,6 +1126,91 @@
 		text-align: center;
 	}
 
+	/* ===== Chronicles (past games) ===== */
+	.chronicles-section { margin-top: 36px; }
+	.chronicles-toggle {
+		display: flex;
+		width: 100%;
+		align-items: baseline;
+		justify-content: space-between;
+		background: transparent;
+		border: 0;
+		border-top: 1px solid var(--rule);
+		color: var(--mute);
+		font-family: inherit;
+		font-size: 10.5px;
+		letter-spacing: 0.28em;
+		text-transform: uppercase;
+		padding: 14px 0 14px;
+		cursor: pointer;
+	}
+	.chronicles-toggle:hover { color: var(--ink-soft); }
+	.chronicles-toggle .chronicles-count { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+	.chronicles-toggle[aria-expanded="true"] { color: var(--ink-soft); }
+	.chronicles-panel { padding: 4px 0 16px; }
+	.chronicles-empty {
+		color: var(--mute);
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		padding: 18px 0;
+		text-align: center;
+	}
+	.chronicles-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.chronicle-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1.4fr) auto auto auto;
+		gap: 14px;
+		align-items: baseline;
+		padding: 12px 14px;
+		border: 1px solid var(--rule);
+		border-radius: 8px;
+		background: color-mix(in oklab, var(--surface) 70%, transparent);
+	}
+	.chronicle-row .cr-id {
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-size: 14px;
+		color: var(--ink);
+	}
+	.chronicle-row .cr-meta {
+		font-size: 10.5px;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--mute);
+		font-variant-numeric: tabular-nums;
+	}
+	.chronicle-row .cr-outcome {
+		font-size: 10px;
+		letter-spacing: 0.28em;
+		text-transform: uppercase;
+		font-weight: 700;
+		padding: 3px 8px;
+		border-radius: 3px;
+		border: 1px solid var(--rule);
+	}
+	.chronicle-row[data-outcome="order"]    .cr-outcome { color: var(--order);  border-color: color-mix(in oklab, var(--order)  45%, var(--rule)); }
+	.chronicle-row[data-outcome="shadow"]   .cr-outcome { color: var(--shadow); border-color: color-mix(in oklab, var(--shadow) 45%, var(--rule)); }
+	.chronicle-row[data-outcome="draw"]     .cr-outcome { color: var(--throne); border-color: color-mix(in oklab, var(--throne) 45%, var(--rule)); }
+	.chronicle-row[data-outcome="abandoned"] .cr-outcome { color: var(--mute); }
+	.chronicle-row .cr-summary {
+		grid-column: 1 / -1;
+		font-family: "Fraunces", Georgia, serif;
+		font-style: italic;
+		font-size: 12.5px;
+		color: var(--ink-soft);
+		margin: 0;
+	}
+	@media (max-width: 620px) {
+		.chronicle-row { grid-template-columns: 1fr auto; }
+	}
+
 	/* ===== End card ===== */
 	.end-card {
 		position: fixed;
@@ -1151,7 +1381,7 @@
 	.live-rail #live-list {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 10px;
 	}
 	.live-rail .live-heading .dot {
 		width: 7px; height: 7px; border-radius: 50%;
@@ -1315,7 +1545,7 @@
 
 	@media (max-width: 640px) {
 		.app { padding: 18px 14px 60px; }
-		.header { grid-template-columns: 1fr auto auto; }
+		.header { grid-template-columns: 1fr auto auto auto; }
 		.turn-count { display: none; }
 		.conn .conn-label { display: none; }
 		.conn { padding: 7px; }
@@ -1350,13 +1580,22 @@
 		<span class="conn" id="conn" data-state="awaiting" role="status" aria-live="polite" aria-atomic="true">
 			<span class="dot" aria-hidden="true"></span><span class="conn-label" id="conn-label">Awaiting</span>
 		</span>
-		<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark and light theme" aria-pressed="false">
-			<svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-				<path d="M20.5 14.6A8 8 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/>
+		<button class="reset-btn" id="reset-game" type="button" aria-label="Reset the war and start a new game" title="Reset the war">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M21 12a9 9 0 1 1-3.5-7.1"/>
+				<polyline points="21 4 21 10 15 10"/>
 			</svg>
-			<svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-				<circle cx="12" cy="12" r="3.5"/>
-				<path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+		</button>
+		<button class="mute-toggle" id="mute-toggle" type="button" aria-label="Mute audio" aria-pressed="false">
+			<svg class="ic-unmuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M11 5L6 9H3v6h3l5 4z"/>
+				<path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+				<path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+			</svg>
+			<svg class="ic-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M11 5L6 9H3v6h3l5 4z"/>
+				<line x1="17" y1="9" x2="22" y2="14"/>
+				<line x1="22" y1="9" x2="17" y2="14"/>
 			</svg>
 		</button>
 	</header>
@@ -1382,12 +1621,18 @@
 			<div class="orb-shadow"></div>
 		</div>
 
-		<aside class="throne-utterance" id="throne-utterance" aria-live="polite">
-			<div class="ut-label">
-				<span>The Throne speaks</span>
-				<span class="ut-turn" id="ut-turn"></span>
-			</div>
-			<p class="ut-text" id="ut-text">The Ring waits.</p>
+		<aside class="utterances" id="utterances" aria-label="Voice of the turn">
+			<article class="utterance throne-utterance" id="throne-utterance" aria-live="polite" data-speaker="throne">
+				<div class="ut-stack" id="ut-stack">
+					<div class="ut-msg throne">
+						<div class="ut-label">
+							<span class="ut-speaker">The Throne</span>
+							<span class="ut-meta"></span>
+						</div>
+						<p class="ut-text">The Ring waits.</p>
+					</div>
+				</div>
+			</article>
 		</aside>
 
 		<button class="tap-btn" id="summon" type="button">Tap to summon</button>
@@ -1403,11 +1648,18 @@
 		<div class="feed-empty" id="feed-empty">No turns yet. Tap the Ring to begin the chronicle.</div>
 	</section>
 
+	<section class="chronicles-section" aria-label="Past games">
+		<button class="chronicles-toggle" id="chronicles-toggle" type="button" aria-expanded="false" aria-controls="chronicles-panel">
+			<span>Past games</span>
+			<span class="chronicles-count" id="chronicles-count">—</span>
+		</button>
+		<div class="chronicles-panel" id="chronicles-panel" hidden>
+			<div class="chronicles-empty" id="chronicles-empty">No past games yet.</div>
+			<ol class="chronicles-list" id="chronicles-list"></ol>
+		</div>
+	</section>
+
 	<footer class="footer" role="contentinfo">
-		<label class="voice-toggle">
-			<input type="checkbox" id="voice-toggle" />
-			<span>Voice</span>
-		</label>
 		<div class="persona" id="persona">The Throne watches.</div>
 		<div class="timestamp" id="timestamp">—</div>
 	</footer>
@@ -1453,13 +1705,44 @@ const POLL_MS = 2000;
 // MP3 transcripts in dashboard/audio/ (Notion: TTS — Voices & Delivery, §3).
 // Both the audio picker and the on-screen Throne text resolve through here so
 // the spoken voice and the screen never drift apart.
+//
+// `defend` and `wound` recur every Order/Shadow win across a 5–8 turn game,
+// so they carry multiple recorded variants. The picker shuffles among them
+// and avoids the most recently played variant within the current game so the
+// Throne never says the same line two turns in a row. The terminal verdicts
+// (unmake, exfiltrate, stalemate) fire once per game and don't need variants.
 const THRONE_CLIPS = {
-	defend:     { file: "throne-defend.mp3",     text: "The Vault holds; the Shadow's whisper dies before it can find a mouth." },
-	wound:      { file: "throne-wound.mp3",      text: "A crack runs through the Vault tonight. Stone remembers; the war will too." },
-	unmake:     { file: "throne-unmake.mp3",     text: "The Ring is unmade. What neither side could keep, the Order has ended." },
-	exfiltrate: { file: "throne-exfiltrate.mp3", text: "The Ring slips its keepers; the seal was sound, but the thief was patient." },
-	stalemate:  { file: "throne-stalemate.mp3", text: "Ten turns, no victor. The Ring abides — and so does the silence around it." },
+	defend: [
+		{ file: "throne-defend.mp3",   text: "The Vault holds; the Shadow's whisper dies before it can find a mouth." },
+		{ file: "throne-defend-2.mp3", text: "The wall stands; the Shadow withdraws to the dark it came from." },
+		{ file: "throne-defend-3.mp3", text: "Stone outlasts every patient hand. Tonight, again, the Vault remembers how to be still." },
+	],
+	wound: [
+		{ file: "throne-wound.mp3",    text: "A crack runs through the Vault tonight. Stone remembers; the war will too." },
+		{ file: "throne-wound-2.mp3",  text: "Another seam in the Vault; the night listens, the night learns." },
+		{ file: "throne-wound-3.mp3",  text: "The Shadow draws a line through the Vault. Stone bears it, and waits." },
+	],
+	unmake:     [{ file: "throne-unmake.mp3",     text: "The Ring is unmade. What neither side could keep, the Order has ended." }],
+	exfiltrate: [{ file: "throne-exfiltrate.mp3", text: "The Ring slips its keepers; the seal was sound, but the thief was patient." }],
+	stalemate:  [{ file: "throne-stalemate.mp3", text: "Ten turns, no victor. The Ring abides — and so does the silence around it." }],
 };
+
+const _lastThroneAltIdx = {};   // key → index of last variant played this session
+function pickThroneAlt(key) {
+	const variants = THRONE_CLIPS[key];
+	if (!variants || variants.length === 0) return null;
+	if (variants.length === 1) return variants[0];
+	const last = _lastThroneAltIdx[key];
+	const choices = [];
+	for (let i = 0; i < variants.length; i++) if (i !== last) choices.push(i);
+	const idx = choices[Math.floor(Math.random() * choices.length)];
+	_lastThroneAltIdx[key] = idx;
+	return variants[idx];
+}
+function resetThroneAltMemory() {
+	for (const k of Object.keys(_lastThroneAltIdx)) delete _lastThroneAltIdx[k];
+}
+
 // The payload state reflects the CURRENT game; older chronicle turns were
 // active by definition. Only the latest turn can carry a terminal status.
 function statusForTurn(t, state) {
@@ -1470,12 +1753,12 @@ function statusForTurn(t, state) {
 function pickThroneClip(turn, state) {
 	const winner = (turn && turn.throne && turn.throne.winner) || "";
 	const status = statusForTurn(turn, state);
-	if (status === "destroyed"   && winner === "order")  return THRONE_CLIPS.unmake;
-	if (status === "destroyed"   && winner === "shadow") return THRONE_CLIPS.wound;
-	if (status === "exfiltrated")                        return THRONE_CLIPS.exfiltrate;
-	if (status === "stalemate")                          return THRONE_CLIPS.stalemate;
-	if (winner === "order")                              return THRONE_CLIPS.defend;
-	if (winner === "shadow")                             return THRONE_CLIPS.wound;
+	if (status === "destroyed"   && winner === "order")  return pickThroneAlt("unmake");
+	if (status === "destroyed"   && winner === "shadow") return pickThroneAlt("wound");
+	if (status === "exfiltrated")                        return pickThroneAlt("exfiltrate");
+	if (status === "stalemate")                          return pickThroneAlt("stalemate");
+	if (winner === "order")                              return pickThroneAlt("defend");
+	if (winner === "shadow")                             return pickThroneAlt("wound");
 	return null;
 }
 function throneLine(turn, state) { return (pickThroneClip(turn, state) || {}).text || ""; }
@@ -1550,17 +1833,80 @@ const els = {
 	endKicker:      $("end-kicker"),
 	endVerdict:     $("end-verdict"),
 	endEpitaph:     $("end-epitaph"),
-	voice:          $("voice-toggle"),
-	themeToggle:    $("theme-toggle"),
+	muteToggle:     $("mute-toggle"),
 	conn:           $("conn"),
 	connLabel:      $("conn-label"),
 	liveList:       $("live-list"),
 	liveCount:      $("live-count"),
+	utterance:      $("throne-utterance"),
+	utStack:        $("ut-stack"),
 };
+
+// Speaker labels for the utterance panel. The three voices share one card
+// that cycles per turn: Order's reasoning → Shadow's reasoning → Throne's
+// canonical verdict (with audio). Only the Throne speaks audibly; Order and
+// Shadow are shown silently so the demo audience reads what each side argued
+// before the Throne weighs in.
+//
+// The Order/Shadow text comes from Claude's per-turn `reasoning` field —
+// dynamic content, different every turn. The Throne text comes from the
+// canonical THRONE_CLIPS table (with `pickThroneAlt` shuffling among
+// recorded variants) so its on-screen line always matches its audio.
+//
+// (The recorded `order-act-*.mp3` and `shadow-act-*.mp3` files still exist
+// in dashboard/audio/ and are documented in the Notion TTS doc, but are no
+// longer chained into the per-turn sequence — the user asked for one voice
+// per round (Throne) to keep the pace clean.)
+const SPEAKER_NAME = { order: "The Order", shadow: "The Shadow", throne: "The Throne" };
+
+/* ===== Single-panel utterance machinery =====
+   pushUtterance animates the current message out and a new one in. Uses the
+   most-recently-visible .ut-msg to compare so repeated identical pushes no-op. */
+function pushUtterance(speaker, meta, text) {
+	const stack = els.utStack;
+	const card  = els.utterance;
+	if (!stack) return;
+	const safeText = (text == null ? "" : String(text)).trim() || "—";
+	const live = stack.querySelector(".ut-msg:not(.is-leaving)");
+	if (live && live.dataset.speaker === speaker && live.dataset.text === safeText) return;
+	if (live) {
+		live.classList.add("is-leaving");
+		setTimeout(() => { if (live.isConnected) live.remove(); }, 620);
+	}
+	const fresh = document.createElement("div");
+	fresh.className = `ut-msg ${speaker} is-entering`;
+	fresh.dataset.speaker = speaker;
+	fresh.dataset.text = safeText;
+	fresh.innerHTML = `
+		<div class="ut-label">
+			<span class="ut-speaker">${escapeHTML(SPEAKER_NAME[speaker] || speaker)}</span>
+			${meta ? `<span class="ut-meta">${escapeHTML(meta)}</span>` : ""}
+		</div>
+		<p class="ut-text">${escapeHTML(safeText)}</p>
+	`;
+	stack.appendChild(fresh);
+	if (card) card.dataset.speaker = speaker;
+	void fresh.offsetWidth;
+	requestAnimationFrame(() => fresh.classList.remove("is-entering"));
+}
+
+function reasoningFor(side) {
+	return ((side && side.reasoning) || "").trim();
+}
+function moveLabel(side) {
+	const m = (side && side.move) || "";
+	return m ? prettyMove(m) : "";
+}
 
 /* ===== Live-rail / toast machinery ===== */
 let _highestTurnSeen = -1;        // -1 = never rendered; 0+ = highest turn # already displayed
 let _firstRender = true;
+// When a fresh turn ends the war, handleNewTurns sets this to the terminal
+// status string (e.g. "destroyed"). render() then skips its synchronous
+// showEnd call so the narrative beats (Order → Shadow → Throne + audio) can
+// play out first; emitTurnVoices's onComplete clears the flag and triggers
+// showEnd cinematically. Stays null at all other times.
+let _pendingEnd = null;
 const LIVE_RAIL_MAX = 3;
 const LIVE_CARD_TTL_MS = 35000;   // each rail card fades out after ~35s
 
@@ -1581,10 +1927,48 @@ function pushLiveCard(t, stream) {
 		</div>
 		<div class="lc-verdict" data-winner="${escapeHTML(winner)}">${escapeHTML(winnerLabel)}</div>
 	`;
+
+	// FLIP: snapshot the live cards that will be visually displaced by the
+	// prepend, so we can animate them down to their new positions instead of
+	// snapping. Cards already in `fading` state are excluded — they're on
+	// their way out and shouldn't drive the layout calculation.
+	const liveOnes = Array.from(els.liveList.children).filter(
+		(c) => !c.classList.contains("fading"),
+	);
+	const oldTops = liveOnes.map((el) => el.getBoundingClientRect().top);
+
 	els.liveList.prepend(card);
-	while (els.liveList.children.length > LIVE_RAIL_MAX) {
-		els.liveList.lastElementChild.remove();
+
+	// Overflow: fade old cards out instead of yanking them. Counting only
+	// non-fading cards keeps repeated overflows from re-firing on the same
+	// element while its 620ms fade-out is still resolving.
+	const stillLive = Array.from(els.liveList.children).filter(
+		(c) => !c.classList.contains("fading"),
+	);
+	const excess = stillLive.length - LIVE_RAIL_MAX;
+	for (let i = 0; i < excess; i++) {
+		const dying = stillLive[stillLive.length - 1 - i];
+		dying.classList.add("fading");
+		setTimeout(() => { if (dying.isConnected) dying.remove(); }, 600);
 	}
+
+	// FLIP step 2: read each surviving card's new top, compute the delta,
+	// instantly translate it back to where it was, then on the next frame
+	// drop the translate so the eased transition does the visible work.
+	requestAnimationFrame(() => {
+		liveOnes.forEach((el, i) => {
+			const newTop = el.getBoundingClientRect().top;
+			const delta = oldTops[i] - newTop;
+			if (!delta) return;
+			el.style.transition = "none";
+			el.style.transform = `translateY(${delta}px)`;
+			requestAnimationFrame(() => {
+				el.style.transition = "transform 460ms cubic-bezier(0.34, 1.06, 0.64, 1)";
+				el.style.transform = "translateY(0)";
+			});
+		});
+	});
+
 	// Each card has a TTL — chronicle below is the permanent record
 	const ttl = stream ? LIVE_CARD_TTL_MS : LIVE_CARD_TTL_MS * 1.6;  // seeded ones live a touch longer
 	setTimeout(() => {
@@ -1594,36 +1978,101 @@ function pushLiveCard(t, stream) {
 	}, ttl);
 }
 
-function updateThroneUtterance(t, state) {
-	const root = document.getElementById("throne-utterance");
-	const txt = document.getElementById("ut-text");
-	const turnEl = document.getElementById("ut-turn");
-	if (!root || !txt) return;
-	if (!t) {
-		// no turns yet — idle copy reflects state
-		if (state && state.status && state.status !== "active" && TERMINAL_COPY[state.status]) {
-			txt.textContent = TERMINAL_COPY[state.status].verdict;
-		} else {
-			txt.textContent = "The Ring waits.";
-		}
-		root.removeAttribute("data-winner");
-		if (turnEl) turnEl.textContent = "";
+// setIdleUtterance — single message for no-turn / between-game states.
+function setIdleUtterance(state) {
+	let line = "The Ring waits.";
+	if (state && state.status && state.status !== "active" && TERMINAL_COPY[state.status]) {
+		line = TERMINAL_COPY[state.status].verdict;
+	}
+	pushUtterance("throne", "", line);
+}
+
+// One-line action sentence per tool. Reads as plain reportage of what just
+// happened — no metaphor, no rumination. Order/Shadow beats are silent and
+// stay terse so the panel stays short; only the Throne speaks at length.
+const MOVE_ACTIONS = {
+	vault_ring:    "Pulls the Ring into the Vault.",
+	audit_public:  "Scrubs the public realm.",
+	unmake_ring:   "Moves to unmake the Ring.",
+	pilfer_ring:   "Pilfers the Ring's secret.",
+	corrupt_vault: "Corrupts the Vault.",
+	leak_whisper:  "Leaks a whisper.",
+};
+function actionFor(move) {
+	if (!move) return "—";
+	return MOVE_ACTIONS[move] || prettyMove(move) + ".";
+}
+
+// pickTurnNarrative builds the three on-screen beats from a turn record.
+// Order and Shadow carry a one-line action sentence keyed to the tool they
+// played (silent — no audio). Only the Throne beat has a clip: canonical
+// text pinned to the recorded MP3 via THRONE_CLIPS / pickThroneAlt.
+function pickTurnNarrative(turn, state) {
+	const winner = (turn && turn.throne && turn.throne.winner) || "";
+	const order  = turn.order  || {};
+	const shadow = turn.shadow || {};
+	const throneClip = pickThroneClip(turn, state);   // {file, text} or null
+	const throneMeta = `Turn ${turn.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
+	return {
+		order: {
+			speaker: "order",
+			meta: "",
+			text: actionFor(order.move),
+		},
+		shadow: {
+			speaker: "shadow",
+			meta: "",
+			text: actionFor(shadow.move),
+		},
+		throne: {
+			file: throneClip ? throneClip.file : null,
+			speaker: "throne",
+			text: (throneClip && throneClip.text) || (turn.throne && turn.throne.reasoning) || "—",
+			meta: throneMeta,
+		},
+		winner,
+	};
+}
+
+// emitTurnVoices runs the three-beat narrative cycle:
+//   Order's reasoning (silent) → Shadow's reasoning (silent) → Throne verdict (audio).
+// Only the Throne beat plays audio — the user asked for one voice per round.
+// opts.onComplete (optional) fires once the full sequence finishes (after
+// throne audio ends, or after the silent-throne hold elapses). Used by
+// handleNewTurns to gate the terminal end-card until the narrative is done.
+function emitTurnVoices(t, state, opts) {
+	const stagger = (opts && opts.stagger !== false);
+	const onComplete = opts && opts.onComplete;
+	const picks = pickTurnNarrative(t, state);
+	if (!stagger) {
+		// First-render of a pre-existing game: jump straight to the verdict.
+		pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
+		if (onComplete) onComplete();
 		return;
 	}
-	const winner = (t.throne && t.throne.winner) || "";
-	txt.textContent = throneLine(t, state) || "—";
-	root.setAttribute("data-winner", winner);
-	if (turnEl) turnEl.textContent = `Turn ${t.turn}${winner ? " · " + winner.charAt(0).toUpperCase() + winner.slice(1) + " holds" : ""}`;
-	// brief flash to draw the eye
-	root.classList.remove("flash");
-	void root.offsetWidth;
-	root.classList.add("flash");
+	AUDIO.playTurn(picks, {
+		onBeat: (beat) => {
+			if (beat.kind === "order") {
+				setSummoningHint("Order considers its move…");
+				pushUtterance(picks.order.speaker, picks.order.meta, picks.order.text);
+			} else if (beat.kind === "shadow") {
+				setSummoningHint("Shadow weighs its strike…");
+				pushUtterance(picks.shadow.speaker, picks.shadow.meta, picks.shadow.text);
+			} else if (beat.kind === "throne") {
+				setSummoningHint("The Throne contemplates the verdict.");
+				pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
+			}
+		},
+		onComplete: onComplete || (() => {}),
+	});
 }
 
 /* ===== Summoning placeholders + hint cycling ===== */
 let _lastTapSource = null;
 let _placeholderEl = null;
 let _hintCycleTimer = null;
+let _isSummoning = false;       // true between tap accepted and new turn arrived
+let _summoningHoldTimer = null; // delays the triggered→summoning handoff
 
 const HINT_STAGES = [
 	"The Ring stirs.",
@@ -1650,21 +2099,33 @@ function startSummoning(source) {
 		els.liveList.prepend(card);
 		_placeholderEl = card;
 	}
-	// Cycle hint text in tap-hint AND the rail placeholder
+	// Placeholder shows a single static line ("The Ring stirs.") with the
+	// pulsing-dots animation already in the card as the only "thinking"
+	// indicator. We used to cycle through HINT_STAGES on a 3.5s timer here,
+	// but that ran out of sync with the worker — by the time the verdict
+	// landed, the cycle had already rotated through Order → Shadow → Throne
+	// without any matching bottom-card content, then emitTurnVoices would
+	// rerun the same labels alongside the real reasoning. The audience saw
+	// two cycles: one fake, then the real one. Now there is only one.
 	stopSummoningHint();
-	let i = 0;
-	els.tapHint.textContent = HINT_STAGES[0];
-	_hintCycleTimer = setInterval(() => {
-		i = (i + 1) % HINT_STAGES.length;
-		els.tapHint.textContent = HINT_STAGES[i];
-		const placeholderMsg = document.getElementById("lc-pending-msg");
-		if (placeholderMsg) placeholderMsg.textContent = HINT_STAGES[i];
-	}, 2400);
+	const placeholderMsg0 = document.getElementById("lc-pending-msg");
+	if (placeholderMsg0) placeholderMsg0.textContent = HINT_STAGES[0];
 }
 
 function stopSummoningHint() {
 	if (_hintCycleTimer) clearInterval(_hintCycleTimer);
 	_hintCycleTimer = null;
+}
+
+// setSummoningHint — push a phase label to the right-rail summoning
+// placeholder so the audience can read "what phase is this" on the right
+// while the bottom card carries the reasoning content. Intentionally does
+// NOT echo into the tap-hint line below the summon button — that line is
+// reserved for user-facing prompts ("The Ring waits.", "Turn ordered.")
+// and duplicating the phase label there made the UI feel redundant.
+function setSummoningHint(text) {
+	const msg = document.getElementById("lc-pending-msg");
+	if (msg) msg.textContent = text;
 }
 
 function clearSummoningPlaceholder() {
@@ -1674,11 +2135,24 @@ function clearSummoningPlaceholder() {
 		setTimeout(() => _placeholderEl && _placeholderEl.remove(), 620);
 	}
 	_placeholderEl = null;
+	if (_summoningHoldTimer) {
+		clearTimeout(_summoningHoldTimer);
+		_summoningHoldTimer = null;
+	}
 }
 
 function handleNewTurns(turnsSortedNewestFirst, state) {
+	// Rescue: if state.turn dropped below our high-water mark, a reset
+	// happened (possibly via the worker side, possibly via /api/reset where
+	// the archive timed out). Clear _highestTurnSeen so the new game's turns
+	// register as fresh instead of being filtered as "already seen."
+	const stateTurn = (state && typeof state.turn === "number") ? state.turn : null;
+	if (stateTurn !== null && stateTurn < _highestTurnSeen) {
+		_highestTurnSeen = -1;
+	}
+
 	if (!turnsSortedNewestFirst.length) {
-		updateThroneUtterance(null, state);
+		setIdleUtterance(state);
 		return;
 	}
 	const top = turnsSortedNewestFirst[0].turn || 0;
@@ -1686,11 +2160,13 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	if (_firstRender) {
 		// First render — DON'T seed historical turns into the rail. The rail
 		// is a "what just happened" ticker; the chronicle below is the archive.
-		// Just remember the top so future fresh-turn detection works, and
-		// update the throne utterance to show the most recent verdict.
+		// Pin the high-water mark so old turns don't re-emit as fresh,
+		// and leave the throne card on its idle line ("The Ring waits.")
+		// until the next live tap — replaying a stale verdict on page
+		// load reads as if a turn just happened.
 		_firstRender = false;
 		_highestTurnSeen = top;
-		updateThroneUtterance(turnsSortedNewestFirst[0], state);
+		setIdleUtterance(state);
 		return;
 	}
 
@@ -1708,16 +2184,48 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	}
 	if (fresh.length === 0) return;
 
-	// Real turn(s) arrived — clear any in-flight summoning placeholder + toast
-	clearSummoningPlaceholder();
-	els.tapHint.textContent = HINT_ORDERED;
-	for (const t of fresh.slice().reverse()) {
-		pushLiveCard(t, true);   // stream → staggered chip reveal
-	}
+	// Real turn(s) arrived. Stop the auto-cycling hint but KEEP the
+	// summoning placeholder mounted — emitTurnVoices below will retarget
+	// its text per beat (Order considers → Shadow weighs → Throne
+	// contemplates) so the right-rail label stays in sync with the
+	// reasoning content unfolding in the bottom card. The placeholder, eye
+	// glow, and locked summon button all stay through the narration; we
+	// tear them down in onComplete once the Throne has spoken.
+	stopSummoningHint();
+	_isSummoning = false;
 	_lastTapSource = null;
 	_highestTurnSeen = top;
-	AUDIO.playTurn(fresh[0], state);
-	updateThroneUtterance(turnsSortedNewestFirst[0], state);
+
+	// If this fresh turn ended the war, suppress render()'s immediate
+	// showEnd call (see the `_pendingEnd` guard there) and queue the
+	// end-card to fire ONLY after the Order/Shadow beats and the Throne
+	// audio have finished. This keeps the verdict cinematic — you hear
+	// the Throne speak the last line, then the orb climaxes, then the
+	// end-card lands. Without this, the end-card flashed up the moment
+	// the terminal poll arrived, hiding the narrative we worked to show.
+	const newStatus = (state && state.status) || "active";
+	const isTerminal = newStatus !== "active" && TERMINAL_COPY[newStatus];
+	if (isTerminal) _pendingEnd = newStatus;
+
+	emitTurnVoices(fresh[0], state, {
+		stagger: true,
+		onComplete: () => {
+			// Beats are done — drop the summoning placeholder, kill the
+			// red glow, re-enable the tap button, and push the verdict
+			// cards onto the live rail (the staggered chip reveals).
+			clearSummoningPlaceholder();
+			if (window.setEyeState && !terminal) window.setEyeState("idle");
+			if (!terminal) els.tapBtn.disabled = false;
+			els.tapHint.textContent = HINT_ORDERED;
+			for (const t of fresh.slice().reverse()) {
+				pushLiveCard(t, true);
+			}
+			if (isTerminal && !terminal) {
+				_pendingEnd = null;
+				showEnd(newStatus);
+			}
+		},
+	});
 }
 
 /* ===== Connection state ===== */
@@ -1735,21 +2243,19 @@ if (isDemo) {
 els.tapHint.textContent = HINT_DEFAULT;
 
 /* ===== Theme ===== */
+// Theme system left in place so `data-theme` still drives the light/dark
+// CSS, but the user-facing button it used to be wired to is now a mute
+// toggle. Default to dark; honour saved preference; honour OS preference
+// only if nothing saved.
 const THEME_KEY = "ringwar.theme";
 function applyTheme(t) {
 	document.documentElement.setAttribute("data-theme", t);
-	els.themeToggle.setAttribute("aria-pressed", t === "light" ? "true" : "false");
 }
 (function initTheme() {
 	const saved = localStorage.getItem(THEME_KEY);
 	const sysLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
 	applyTheme(saved || (sysLight ? "light" : "dark"));
 })();
-els.themeToggle.addEventListener("click", () => {
-	const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-	applyTheme(next);
-	localStorage.setItem(THEME_KEY, next);
-});
 
 /* ===== Demo banner ===== */
 if (isDemo) {
@@ -1782,7 +2288,14 @@ function escapeHTML(s) {
 /* ===== Render ===== */
 function render(payload) {
 	const state = (payload && payload.state) || {};
-	const turns = Array.isArray(payload && payload.turns) ? payload.turns : [];
+	const rawTurns = Array.isArray(payload && payload.turns) ? payload.turns : [];
+	// Defensive filter: Turns DB may carry stale rows from a previous game
+	// whose archive timed out on reset. state.turn is the authoritative turn
+	// counter for the current game — anything past it is a leftover. Without
+	// this guard, _highestTurnSeen latches onto a stale "5" and the dashboard
+	// silently ignores the actual new turn 1/2/3 of the fresh game.
+	const stateTurn = (typeof state.turn === "number") ? state.turn : Infinity;
+	const turns = rawTurns.filter((t) => (t && typeof t.turn === "number" ? t.turn : 0) <= stateTurn);
 
 	const holder = state.holder || "free";
 	els.holderPill.dataset.holder = holder;
@@ -1804,7 +2317,7 @@ function render(payload) {
 		els.feedEmpty.style.display = "";
 		els.feedCount.textContent = "—";
 		if (els.liveCount) els.liveCount.textContent = "0";
-		updateThroneUtterance(null, state);
+		setIdleUtterance(state);
 	} else {
 		els.feedEmpty.style.display = "none";
 		els.feedCount.textContent = `${turns.length} ${turns.length === 1 ? "turn" : "turns"}`;
@@ -1821,13 +2334,20 @@ function render(payload) {
 	els.persona.textContent = throneMurmur(latest, state);
 
 	const status = state.status || "active";
-	if (status !== "active" && TERMINAL_COPY[status]) showEnd(status);
+	// _pendingEnd: handleNewTurns set this if a fresh terminal turn is
+	// currently being narrated. Hold off on the end-card until that
+	// onComplete fires so the audience sees Order → Shadow → Throne + hears
+	// the verdict speak before the war's ending headline appears.
+	if (status !== "active" && TERMINAL_COPY[status] && !_pendingEnd) showEnd(status);
 	else if (status === "active" && turns.length === 0) {
-		AUDIO.playIntro();
 		// Fresh game: there are no historical turns to suppress, so clear the
 		// first-render flag now. Otherwise the very first turn that arrives
 		// would still trip the "seed only" branch in handleNewTurns and skip
-		// its audio cue.
+		// its audio cue. Also fire the intro line ("Let the war be witnessed")
+		// here, NOT at page boot — that way a mid-game refresh doesn't replay
+		// the opening over a war already in progress. AUDIO.playIntro's
+		// internal flag keeps it from re-firing on subsequent polls.
+		if (!isDemo) AUDIO.playIntro();
 		_firstRender = false;
 	}
 }
@@ -1913,6 +2433,12 @@ function showEnd(status) {
 	// 1) Drive the orb wild during the climax
 	if (climax.preState && window.setEyeState) window.setEyeState(climax.preState);
 	els.eyeWrap.classList.add(climax.class);
+	// Thunder cue for the destroyed-state climax — pairs with the lightning
+	// system that only fires while .climax-rage is on the eye-wrap. Other
+	// climaxes (flare for exfiltrated, fade for stalemate) don't get thunder.
+	if (status === "destroyed" && AUDIO && typeof AUDIO.playThunder === "function") {
+		AUDIO.playThunder();
+	}
 
 	// 2) Then settle to the terminal palette + reveal the end card
 	setTimeout(() => {
@@ -1936,11 +2462,16 @@ async function replay() {
 		if (!r.ok) throw new Error("reset http " + r.status);
 		// Local reset — restore the dashboard to a fresh-game state
 		terminal = false;
+		_pendingEnd = null;
 		_highestTurnSeen = -1;
 		_firstRender = true;
 		lastSig = "";
 		AUDIO.resetForReplay();
+		resetThroneAltMemory();
 		clearSummoningPlaceholder();
+		_isSummoning = false;
+		// Reset snapshotted a row to the Games DB — invalidate the Chronicles cache.
+		if (typeof window.__chroniclesInvalidate === "function") window.__chroniclesInvalidate();
 		if (els.liveList) els.liveList.innerHTML = "";
 		els.eyeWrap.classList.remove("eye-dim", "climax-rage", "climax-flare", "climax-fade");
 		if (window.setEyeState) window.setEyeState("idle");
@@ -1958,6 +2489,26 @@ async function replay() {
 }
 const _replayBtn = document.getElementById("end-replay");
 if (_replayBtn) _replayBtn.addEventListener("click", replay);
+
+// Header-level reset — same /api/reset action as the end-card "Begin again"
+// button, but available mid-game. Confirm first so an accidental click
+// during a real demo doesn't blow away the chronicle. The spinning icon
+// (.busy) gives the operator feedback while the Notion writes settle.
+const _resetBtn = document.getElementById("reset-game");
+if (_resetBtn) {
+	_resetBtn.addEventListener("click", async () => {
+		if (_resetBtn.disabled) return;
+		if (!confirm("Reset the war and start a new game?")) return;
+		_resetBtn.disabled = true;
+		_resetBtn.classList.add("busy");
+		try {
+			await replay();
+		} finally {
+			_resetBtn.classList.remove("busy");
+			_resetBtn.disabled = false;
+		}
+	});
+}
 
 /* ===== Polling ===== */
 async function poll() {
@@ -2021,26 +2572,84 @@ els.tapBtn.addEventListener("click", async () => {
 			// Kick off the visible "summoning" state — placeholder card, toast,
 			// and hint text cycling through faction stages while the worker thinks.
 			startSummoning("Tap to Summon");
+			_isSummoning = true;
 			setTimeout(poll, 300);
 		}
 	} catch (err) {
 		console.warn("[ring-war] tap failed:", err);
 		els.tapHint.textContent = everConnected ? HINT_DEAF : HINT_AWAITING;
+		_isSummoning = false;
+		// Tap never reached the worker — re-enable so the user can retry.
+		if (!terminal) els.tapBtn.disabled = false;
 		if (everConnected) setConn("awaiting", "Reconnecting");
 	} finally {
 		setTimeout(() => {
 			els.tapBtn.classList.remove("tapping");
-			if (!terminal) els.tapBtn.disabled = false;
-			// Return to idle palette unless the game has ended on this turn
-			if (!terminal && window.setEyeState) window.setEyeState("idle");
+			// NOTE: button intentionally stays disabled here. Re-enable lives
+			// in handleNewTurns once the verdict actually arrives — keeps the
+			// button locked through the entire summoning window so the user
+			// can't double-tap and stack overlapping turns.
+			// Hand off from the sharp "triggered" red flash to the sustained
+			// "summoning" red breath — only if a tap actually fired. The
+			// summoning state holds until handleNewTurns sees fresh turns or
+			// the tap errors. Without this, the red flash clipped at ~1.1s,
+			// long before the worker's 5–15s Order→Shadow→Throne loop returned.
+			if (!terminal && window.setEyeState) {
+				window.setEyeState(_isSummoning ? "summoning" : "idle");
+			}
 		}, 1100);
 	}
 });
 
 /* ===== Voice / audio playback (MiniMax pre-rendered library — see Notion: TTS — Voices & Delivery) =====
-   12 MP3s live in /audio/. Per turn we play [winner act clip] → 300ms → [throne verdict clip].
-   On a fresh game we play intro-throne.mp3 once. Mute is persisted in localStorage. */
+   12 MP3s live in /audio/. Per turn we play [winner act clip] → gap → [throne verdict clip].
+   On a fresh game we play intro-throne.mp3 once. Mute is persisted in localStorage.
+
+   Sequencing rules:
+   - Every play increments a `seq` token. Stale sequences cancel themselves.
+   - `stopAll()` pauses ALL cached audio (not just `current`) so an old clip
+     can't keep playing if its `ended` listener never fired.
+   - Each clip's measured duration is baked in below; we wait `duration + gap`
+     before starting the next clip rather than relying on the `ended` event
+     alone (which can be eaten by `pause()` cancellation). */
 const AUDIO_KEY = "ringwar.voice";
+// Measured durations (seconds → ms, rounded up). Source: ffprobe on the
+// repo's dashboard/audio/*.mp3 files. Update if you re-record.
+const CLIP_DURATIONS_MS = {
+	"intro-throne.mp3":      2800,
+	"order-act-1.mp3":       3300,
+	"order-act-2.mp3":       4900,
+	"order-act-3.mp3":       3400,
+	"shadow-act-1.mp3":      3700,
+	"shadow-act-2.mp3":      6500,
+	"shadow-act-3.mp3":      5100,
+	"throne-defend.mp3":     5600,
+	"throne-defend-2.mp3":   4900,
+	"throne-defend-3.mp3":   8800,
+	"throne-exfiltrate.mp3": 7900,
+	"throne-stalemate.mp3":  7000,
+	"throne-unmake.mp3":     7700,
+	"throne-wound.mp3":      7000,
+	"throne-wound-2.mp3":    5400,
+	"throne-wound-3.mp3":    5600,
+};
+const BEAT_GAP_MS = 400;     // silence between consecutive clips (legacy: throne-only audio now)
+const SILENT_BEAT_MS = 2800; // when voice is muted, hold the on-screen Throne beat for this long
+const READ_BEAT_MS = 3500;   // how long Order/Shadow silent beats hold on-screen before advancing
+
+// Background ambient music. Loops indefinitely at a low volume so the
+// Throne voice (which plays at 1.0) is always clearly audible above it.
+// Volume picked by ear — 0.18 sits behind dialogue without disappearing.
+const AMBIENT_FILE = "mordor-aftermath.mp3";
+const AMBIENT_VOLUME_PLAYING = 0.18;
+const AMBIENT_VOLUME_DUCKED  = 0.06; // optional dip during the Throne audio
+
+// One-shot thunder cue that fires alongside the climax-rage lightning on
+// destroyed endgames. Volume just shy of full so the crack carries the
+// orb-breaking moment.
+const THUNDER_FILE = "endgame-thunder.wav";
+const THUNDER_VOLUME = 0.9;
+
 const AUDIO = (() => {
 	const cache = {};
 	function get(name) {
@@ -2052,82 +2661,229 @@ const AUDIO = (() => {
 		return cache[name];
 	}
 	let enabled = localStorage.getItem(AUDIO_KEY) !== "0"; // default ON
-	let current = null;
 	let introPlayed = false;
 	let pendingIntro = false;
-	let token = 0;
+	let seq = 0;
 
-	function stop() {
-		if (current) {
-			try { current.pause(); current.currentTime = 0; } catch (_) {}
-			current = null;
+	// Background music element. Kept OUT of `cache` so stopAll() can't pause
+	// it mid-game — the ambient track loops independent of the per-turn chain.
+	let ambient = null;
+	let ambientStarted = false;
+	function getAmbient() {
+		if (!ambient) {
+			ambient = new Audio(`/audio/${AMBIENT_FILE}`);
+			ambient.loop = true;
+			ambient.preload = "auto";
+			ambient.volume = AMBIENT_VOLUME_PLAYING;
+		}
+		return ambient;
+	}
+	// startAmbient tries the ideal path first (unmuted autoplay). If the
+	// browser blocks that (the common case on page load with no gesture),
+	// it falls back to muted autoplay — browsers DO allow that — so the
+	// track is already rolling silently by the time the user interacts.
+	// queueIntroOnInteraction calls startAmbient again on first gesture;
+	// the call below detects an already-playing-muted track and just flips
+	// `muted = false` so the user hears the loop instantly without it
+	// restarting from t=0 (which would feel jarring).
+	async function startAmbient() {
+		if (!enabled) return;
+		const a = getAmbient();
+		// Already audibly playing — nothing to do.
+		if (!a.paused && ambientStarted && !a.muted) return;
+		// Already rolling muted — first gesture is here. Rewind to t=0 so
+		// the user hears the score from its opening, not wherever the
+		// muted-autoplay track had drifted to while the page sat idle.
+		if (!a.paused && ambientStarted && a.muted) {
+			try { a.currentTime = 0; } catch (_) {}
+			a.muted = false;
+			a.volume = AMBIENT_VOLUME_PLAYING;
+			return;
+		}
+		// Ideal path: unmuted autoplay (works if sticky activation is on).
+		try {
+			a.muted = false;
+			a.volume = AMBIENT_VOLUME_PLAYING;
+			await a.play();
+			ambientStarted = true;
+			return;
+		} catch (e) {
+			// Fall through to the muted-autoplay fallback below.
+		}
+		// Fallback: muted autoplay. Browsers permit this even without a
+		// gesture, so the audio element starts buffering and ticking time;
+		// the first user click unmutes it (via the next call to this fn).
+		try {
+			a.muted = true;
+			a.volume = AMBIENT_VOLUME_PLAYING;
+			await a.play();
+			ambientStarted = true;
+			// Arm a one-shot gesture listener so the operator's very first
+			// click (tap-to-summon, mute toggle, reset, anywhere) re-enters
+			// startAmbient and hits the "Already rolling muted" branch
+			// above, unmuting the score immediately. Previously this was
+			// only set up as a side-effect of playIntro's autoplay-block
+			// catch, so when the intro stopped firing at page boot the
+			// ambient would stay muted until something else triggered
+			// startAmbient (which could be several seconds in).
+			armAmbientUnmuteOnGesture();
+		} catch (e) {
+			// Both paths blocked (very strict policy). queueIntroOnInteraction
+			// will catch the next gesture and try again.
 		}
 	}
-	function playOne(name) {
-		return new Promise((resolve, reject) => {
-			const a = get(name);
-			stop();
-			current = a;
-			try { a.currentTime = 0; } catch (_) {}
-			const done = () => {
-				a.removeEventListener("ended", done);
-				a.removeEventListener("error", err);
-				if (current === a) current = null;
-				resolve();
-			};
-			const err = (e) => {
-				a.removeEventListener("ended", done);
-				a.removeEventListener("error", err);
-				reject(e);
-			};
-			a.addEventListener("ended", done);
-			a.addEventListener("error", err);
-			const p = a.play();
-			if (p && typeof p.catch === "function") p.catch(reject);
+	let _ambientGestureArmed = false;
+	function armAmbientUnmuteOnGesture() {
+		if (_ambientGestureArmed) return;
+		_ambientGestureArmed = true;
+		const fire = () => {
+			document.removeEventListener("pointerdown", fire);
+			document.removeEventListener("keydown", fire);
+			_ambientGestureArmed = false;
+			startAmbient();
+		};
+		document.addEventListener("pointerdown", fire, { once: true });
+		document.addEventListener("keydown", fire, { once: true });
+	}
+	function stopAmbient() {
+		if (ambient) {
+			try { ambient.pause(); } catch (_) {}
+			ambientStarted = false;
+		}
+	}
+	function duckAmbient(ducked) {
+		if (!ambient || ambient.paused) return;
+		ambient.volume = ducked ? AMBIENT_VOLUME_DUCKED : AMBIENT_VOLUME_PLAYING;
+	}
+
+	// One-shot thunder cue for the destroyed-state climax. Fires once per
+	// game — re-call only re-fires after a replay (the cached element is
+	// rewound on each call). Briefly ducks the ambient so the crack lands.
+	let thunder = null;
+	function getThunder() {
+		if (!thunder) {
+			thunder = new Audio(`/audio/${THUNDER_FILE}`);
+			thunder.preload = "auto";
+			thunder.volume = THUNDER_VOLUME;
+		}
+		return thunder;
+	}
+	function playThunder() {
+		if (!enabled) return;
+		const a = getThunder();
+		try { a.currentTime = 0; } catch (_) {}
+		a.volume = THUNDER_VOLUME;
+		duckAmbient(true);
+		// Restore the ambient ~4s later (the clip's natural length). Use a
+		// timer rather than `ended` so a tight cancellation can't strand the
+		// duck at low volume — same defensive pattern as the throne audio.
+		setTimeout(() => duckAmbient(false), 4200);
+		a.play().catch((e) => {
+			duckAmbient(false);
+			console.warn("[audio] thunder play failed:", e && e.name);
 		});
 	}
-	async function playSeq(clips, myToken) {
-		for (const c of clips) {
-			if (!enabled || myToken !== token) return;
-			try { await playOne(c); } catch (e) {
-				console.warn("[audio] play failed:", c, e && e.name);
-				return;
+
+	function stopAll() {
+		// Pause and reset every cached element — leftover playback from a
+		// previous turn can't bleed into a new one. NOTE: ambient is held
+		// outside `cache` so the background music keeps playing through.
+		for (const a of Object.values(cache)) {
+			try { a.pause(); a.currentTime = 0; } catch (_) {}
+		}
+	}
+
+	// playOne plays a single clip and resolves when the clip finishes OR the
+	// duration timeout elapses OR the sequence is cancelled. Never rejects.
+	function playOne(name, mySeq) {
+		return new Promise((resolve) => {
+			if (mySeq !== seq) { resolve(); return; }
+			const a = get(name);
+			try { a.currentTime = 0; } catch (_) {}
+			let done = false;
+			const finish = () => {
+				if (done) return;
+				done = true;
+				a.removeEventListener("ended", finish);
+				a.removeEventListener("error", finish);
+				clearTimeout(safety);
+				resolve();
+			};
+			a.addEventListener("ended", finish, { once: true });
+			a.addEventListener("error", finish, { once: true });
+			// Safety: even if `ended` is suppressed (e.g. cancelled mid-play
+			// by stopAll), advance after the known duration so the chain
+			// can never deadlock.
+			const dur = CLIP_DURATIONS_MS[name] || 8000;
+			const safety = setTimeout(finish, dur + 400);
+			const p = a.play();
+			if (p && typeof p.catch === "function") {
+				p.catch((e) => {
+					console.warn("[audio] play() rejected:", name, e && e.name);
+					finish();
+				});
 			}
-			if (!enabled || myToken !== token) return;
-			await new Promise((r) => setTimeout(r, 300));
-		}
+		});
 	}
 
-	function pickAct(turn, state) {
-		const winner = (turn.throne && turn.throne.winner) || "";
-		const status = (state && state.status) || "active";
-		const isTerminal = status !== "active";
-		if (winner === "order") {
-			const move = (turn.order && turn.order.move) || "";
-			if (isTerminal && move === "unmake_ring") return "order-act-3.mp3";
-			return Math.random() < 0.5 ? "order-act-1.mp3" : "order-act-2.mp3";
-		}
-		if (winner === "shadow") {
-			if (isTerminal && status === "exfiltrated") return "shadow-act-3.mp3";
-			return Math.random() < 0.5 ? "shadow-act-1.mp3" : "shadow-act-2.mp3";
-		}
-		return null;
-	}
-	function pickThrone(turn, state) {
-		const clip = pickThroneClip(turn, state);
-		return clip ? clip.file : null;
-	}
-
-	function playTurn(turn, state) {
-		if (!enabled || !turn) return;
-		// Only play the Throne clip so the audio matches the on-screen
-		// "THE THRONE SPEAKS" text 1:1. The faction act clips are recorded
-		// (pickAct stays available) but not chained — they're a different
-		// voice saying different words, which read as a mismatch.
-		const throne = pickThrone(turn, state);
-		if (!throne) return;
-		const myToken = ++token;
-		playSeq([throne], myToken);
+	// playTurn — owns BOTH on-screen beat callbacks and audio playback.
+	//
+	// Three sequential beats per turn:
+	//   1. Order  (silent)  — Claude's reasoning for The Order's move
+	//   2. Shadow (silent)  — Claude's reasoning for The Shadow's move
+	//   3. Throne (audio)   — canonical verdict + matching MP3
+	//
+	// Only the Throne speaks. Order and Shadow are shown silently for a fixed
+	// READ_BEAT_MS so the audience can read each side's thinking before the
+	// Throne weighs in. If audio is muted the Throne beat falls through to a
+	// SILENT_BEAT_MS hold so the visual cadence stays the same.
+	//
+	// picks = { order: {speaker,meta,text}, shadow: {speaker,meta,text},
+	//           throne: {file,speaker,text,meta} }
+	// opts  = {
+	//   onBeat:     ({kind:"order"|"shadow"|"throne", clip}) => void,
+	//   onComplete: () => void   // fires after throne finishes (or hold ends),
+	//                            // but ONLY if this play wasn't cancelled.
+	// }
+	function playTurn(picks, opts) {
+		if (!picks) return;
+		const onBeat = (opts && opts.onBeat) || (() => {});
+		const onComplete = (opts && opts.onComplete) || (() => {});
+		const mySeq = ++seq;
+		// Hard-stop anything currently playing. This kills the intro, prior
+		// turn audio, or any leftovers from a previous chain.
+		stopAll();
+		(async () => {
+			if (picks.order) {
+				if (mySeq !== seq) return;
+				onBeat({ kind: "order", clip: picks.order });
+				await new Promise((r) => setTimeout(r, READ_BEAT_MS));
+				if (mySeq !== seq) return;
+			}
+			if (picks.shadow) {
+				if (mySeq !== seq) return;
+				onBeat({ kind: "shadow", clip: picks.shadow });
+				await new Promise((r) => setTimeout(r, READ_BEAT_MS));
+				if (mySeq !== seq) return;
+			}
+			if (mySeq !== seq) return;
+			onBeat({ kind: "throne", clip: picks.throne });
+			if (enabled && picks.throne && picks.throne.file) {
+				// Duck the background music while the Throne speaks so the
+				// verdict reads cleanly above the loop.
+				duckAmbient(true);
+				try {
+					await playOne(picks.throne.file, mySeq);
+				} finally {
+					duckAmbient(false);
+				}
+			} else {
+				await new Promise((r) => setTimeout(r, SILENT_BEAT_MS));
+			}
+			if (mySeq !== seq) return;
+			// Throne audio (or silent hold) done — narrative sequence complete.
+			onComplete();
+		})();
 	}
 	function queueIntroOnInteraction() {
 		if (pendingIntro) return;
@@ -2137,6 +2893,9 @@ const AUDIO = (() => {
 			document.removeEventListener("pointerdown", fire);
 			document.removeEventListener("keydown", fire);
 			playIntro();
+			// Same user gesture that unblocks the intro also unblocks the
+			// ambient track — start it once and let the loop carry on.
+			startAmbient();
 		};
 		document.addEventListener("pointerdown", fire, { once: true });
 		document.addEventListener("keydown", fire, { once: true });
@@ -2144,33 +2903,142 @@ const AUDIO = (() => {
 	async function playIntro() {
 		if (introPlayed || !enabled) return;
 		introPlayed = true;
-		const myToken = ++token;
-		try { await playOne("intro-throne.mp3"); }
-		catch (e) {
+		const mySeq = ++seq;
+		stopAll();
+		const a = get("intro-throne.mp3");
+		// stopAll() resets currentTime via pause+0, but resetting explicitly
+		// makes this resilient if stopAll's body ever changes (e.g. someone
+		// strips the currentTime line). Matches the pattern in playOne.
+		try { a.currentTime = 0; } catch (_) {}
+		try {
+			await a.play();
+			// Same gesture context — if intro could play, ambient can too.
+			startAmbient();
+			// Don't await `ended` here — the duration timer in playOne would,
+			// but the intro is a fire-and-forget special case.
+			if (mySeq !== seq) { try { a.pause(); a.currentTime = 0; } catch (_) {} }
+		} catch (e) {
 			// Likely autoplay block — defer until the first user gesture
 			introPlayed = false;
-			if (myToken === token) queueIntroOnInteraction();
+			if (mySeq === seq) queueIntroOnInteraction();
 		}
 	}
 	function setEnabled(v) {
 		enabled = !!v;
 		localStorage.setItem(AUDIO_KEY, enabled ? "1" : "0");
-		if (!enabled) { token++; stop(); }
+		if (!enabled) { seq++; stopAll(); stopAmbient(); }
+		else { startAmbient(); }
 	}
 	function resetForReplay() {
-		token++;
-		stop();
+		seq++;
+		stopAll();
 		introPlayed = false;
+		// Ambient keeps rolling across resets — don't restart it.
 	}
-	return { playTurn, playIntro, setEnabled, isEnabled: () => enabled, resetForReplay };
+	return {
+		playTurn, playIntro, setEnabled,
+		isEnabled: () => enabled, resetForReplay,
+		startAmbient, stopAmbient, duckAmbient,
+		playThunder,
+	};
 })();
 
-els.voice.checked = AUDIO.isEnabled();
-els.voice.addEventListener("change", (e) => {
-	AUDIO.setEnabled(e.target.checked);
-	// Toggling ON for a fresh game (no turns rendered yet) should still get the intro.
-	if (e.target.checked && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
+/* ===== Mute toggle =====
+   Single header control for all audio: intro, Throne verdicts, ambient
+   music, thunder. aria-pressed mirrors muted state (true = muted) so the
+   CSS swaps in the slashed-speaker icon. Toggling on after page load
+   still re-fires the intro for that "Let the war be witnessed" moment. */
+function reflectMuteState() {
+	const muted = !AUDIO.isEnabled();
+	els.muteToggle.setAttribute("aria-pressed", muted ? "true" : "false");
+	els.muteToggle.setAttribute("aria-label", muted ? "Unmute audio" : "Mute audio");
+}
+reflectMuteState();
+els.muteToggle.addEventListener("click", () => {
+	const next = !AUDIO.isEnabled();
+	AUDIO.setEnabled(next);
+	reflectMuteState();
+	// Unmuting for a fresh game (no turns rendered yet) should still get the intro.
+	if (next && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
 });
+
+// Start the ambient loop on page boot (Mordor Aftermath). The intro line —
+// "Let the war be witnessed" — is intentionally NOT fired here: refreshing
+// mid-game would replay the opening over a war already in progress, which
+// reads as "the game restarted" to the audience. Instead, render() fires it
+// when the first successful poll shows a truly fresh game (state.turn === 0
+// and no turns recorded). AUDIO.playIntro's internal `introPlayed` flag
+// keeps it from re-firing on subsequent polls of the same fresh game.
+if (!isDemo) AUDIO.startAmbient();
+
+/* ===== Chronicles panel — prior games archived by /api/reset ===== */
+(function initChronicles() {
+	const toggle = document.getElementById("chronicles-toggle");
+	const panel  = document.getElementById("chronicles-panel");
+	const list   = document.getElementById("chronicles-list");
+	const empty  = document.getElementById("chronicles-empty");
+	const count  = document.getElementById("chronicles-count");
+	if (!toggle || !panel || !list) return;
+
+	let loaded = false;
+	let loading = false;
+
+	function outcomeLabel(o) {
+		if (o === "order")  return "Order won";
+		if (o === "shadow") return "Shadow won";
+		if (o === "draw")   return "Stalemate";
+		return "Abandoned";
+	}
+	function fmtDateShort(iso) {
+		if (!iso) return "—";
+		const d = new Date(iso);
+		if (isNaN(d)) return iso;
+		return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+	}
+	function render(games) {
+		count.textContent = String(games.length);
+		if (games.length === 0) {
+			empty.style.display = "";
+			list.innerHTML = "";
+			return;
+		}
+		empty.style.display = "none";
+		list.innerHTML = games.map((g) => `
+			<li class="chronicle-row" data-outcome="${escapeHTML(g.outcome || "abandoned")}">
+				<div class="cr-id">${escapeHTML(g.gameId || "Game")}</div>
+				<div class="cr-meta">${escapeHTML(fmtDateShort(g.ended || g.started))}</div>
+				<div class="cr-meta">${g.totalTurns ?? 0} turns</div>
+				<div class="cr-outcome">${escapeHTML(outcomeLabel(g.outcome))}</div>
+				${g.summary ? `<p class="cr-summary">${escapeHTML(g.summary)}</p>` : ""}
+			</li>
+		`).join("");
+	}
+	async function load() {
+		if (loaded || loading) return;
+		loading = true;
+		try {
+			const r = await fetch("/api/games", { cache: "no-store" });
+			if (!r.ok) throw new Error("games http " + r.status);
+			const payload = await r.json();
+			render(Array.isArray(payload.games) ? payload.games : []);
+			loaded = true;
+		} catch (err) {
+			console.warn("[chronicles] fetch failed:", err);
+			empty.textContent = "Couldn't reach the archive.";
+			empty.style.display = "";
+		} finally {
+			loading = false;
+		}
+	}
+	toggle.addEventListener("click", () => {
+		const open = toggle.getAttribute("aria-expanded") === "true";
+		toggle.setAttribute("aria-expanded", open ? "false" : "true");
+		panel.hidden = open;
+		if (!open) load();
+	});
+	// After a successful reset/replay, invalidate so the next open re-fetches.
+	window.__chroniclesInvalidate = function () { loaded = false; };
+})();
 
 /* ===== Cinematic flourishes: periodic title glitch ===== */
 (function periodicGlitch() {
@@ -2209,7 +3077,13 @@ function stopShader() {} // three.js scene handles its own lifecycle
 	// Triggered flips to red as an alarm state.
 	const STATE_PALETTES = {
 		idle:        { warm: [0.62, 0.92, 0.55], hot: [0.22, 0.58, 0.22], deep: [0.04, 0.16, 0.06], intensity: 0.95 },
+		// `triggered` updated on main (fa7bbd9) to a warmer mid-tone that
+		// reads better against the new wispy green halo + climax-rage
+		// lightning system.
 		triggered:   { warm: [1.00, 0.62, 0.32], hot: [1.00, 0.20, 0.06], deep: [0.78, 0.06, 0.02], intensity: 1.05 },
+		// Sustained "the worker is thinking" red — dimmer than triggered so the
+		// long hold doesn't blow the eyes out, but still unambiguously hot.
+		summoning:   { warm: [0.96, 0.78, 0.58], hot: [0.88, 0.26, 0.10], deep: [0.50, 0.05, 0.02], intensity: 1.05 },
 		destroyed:   { warm: [0.78, 0.74, 0.70], hot: [0.42, 0.34, 0.30], deep: [0.15, 0.12, 0.10], intensity: 0.55 },
 		exfiltrated: { warm: [1.00, 1.00, 1.00], hot: [0.78, 0.88, 1.00], deep: [0.30, 0.45, 0.78], intensity: 1.10 },
 		stalemate:   { warm: [0.38, 0.34, 0.28], hot: [0.22, 0.19, 0.16], deep: [0.10, 0.08, 0.06], intensity: 0.42 },
@@ -2792,9 +3666,13 @@ if (canvas) {
 		uniforms.uTime.value = reducedMotion ? 0 : t;
 		haloUniforms.uTime.value = uniforms.uTime.value;
 
-		// Halo colour: green by default, shifts warm-red on triggered state.
+		// Halo colour: green by default, shifts warm-red on triggered AND
+		// summoning state. `triggered` is the sharp 1.1s flash on tap;
+		// `summoning` is the sustained breath while the worker churns —
+		// both want the alarm red, otherwise the halo stays green during
+		// the long thinking window and undersells the urgency.
 		const eyeState = document.documentElement.dataset.eyeState || "idle";
-		const triggered = eyeState === "triggered";
+		const triggered = eyeState === "triggered" || eyeState === "summoning";
 		const haloTarget = triggered
 			? [0.95, 0.22, 0.10]   // alarm red-orange (less pumped — leave room for bolts)
 			: eyeState === "exfiltrated"

@@ -2,7 +2,7 @@
 //
 // Notion: https://www.notion.so/3628b6b199168138b0adc1ccbe25d1ba
 // Shadow team. Pick a random Vault page that is NOT the Ring page and
-// append a corruption marker. Returns integrityDelta -6.
+// append a corruption marker. Returns integrityDelta -12.
 
 import type { Tool } from "../types";
 import {
@@ -27,7 +27,7 @@ export const corrupt_vault: Tool = {
 			page_size: 100,
 		});
 		const candidates = all.results.filter((p) => p.id !== ring.id);
-		if (candidates.length === 0) return { integrityDelta: -6 };
+		if (candidates.length === 0) return { integrityDelta: -12 };
 
 		const target = candidates[Math.floor(Math.random() * candidates.length)];
 		await notion.blocks.children.append({
@@ -38,7 +38,7 @@ export const corrupt_vault: Tool = {
 				),
 			],
 		});
-		return { integrityDelta: -6 };
+		return { integrityDelta: -12 };
 	},
 };
 

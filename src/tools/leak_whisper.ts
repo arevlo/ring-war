@@ -1,11 +1,23 @@
 // src/tools/leak_whisper.ts
 //
 // Notion: https://www.notion.so/3628b6b19916816c857df0cabb643f3c
-// Shadow team. Post a comment with rumor_text on a random Public DB page.
-// Returns secrecyDelta -4.
+// Shadow team. Append a paragraph with rumor_text on a random Public DB page.
+// Returns secrecyDelta -9.
+//
+// We originally used `notion.comments.create`, but Notion's internal
+// integration capability set doesn't grant comment-create rights without an
+// explicit "Comments" toggle that's often missed in setup — the call returns
+// 403 restricted_resource, the handler catches it, the turn is recorded as
+// failed, and the bars never move. Appending a paragraph block uses the
+// "Update content" capability which is already required by the other tools
+// (vault_ring, corrupt_vault, audit_public), so this works on the default
+// permissions every Ring War workspace already has.
 
 import type { Tool } from "../types";
-import { publicDataSourceId } from "./_notion_helpers";
+import {
+	paragraph,
+	publicDataSourceId,
+} from "./_notion_helpers";
 
 interface LeakInput {
 	rumor_text: string;
@@ -14,7 +26,7 @@ interface LeakInput {
 export const leak_whisper: Tool<LeakInput> = {
 	name: "leak_whisper",
 	description:
-		"Post a public comment alluding to the Ring without naming it. A small erosion of secrecy, but steady.",
+		"Drop a rumor onto a public page — alluding to the Ring without naming it. A small erosion of secrecy, but steady.",
 	inputSchema: {
 		type: "object",
 		properties: {
@@ -31,16 +43,16 @@ export const leak_whisper: Tool<LeakInput> = {
 			data_source_id: await publicDataSourceId(notion),
 			page_size: 100,
 		});
-		if (pages.results.length === 0) return { secrecyDelta: -4 };
+		if (pages.results.length === 0) return { secrecyDelta: -9 };
 
 		const target =
 			pages.results[Math.floor(Math.random() * pages.results.length)];
-		await notion.comments.create({
-			parent: { page_id: target.id },
-			rich_text: [{ type: "text", text: { content: rumor_text } }],
+		await notion.blocks.children.append({
+			block_id: target.id,
+			children: [paragraph(`🜂 ${rumor_text}`)],
 		});
 
-		return { secrecyDelta: -4 };
+		return { secrecyDelta: -9 };
 	},
 };
 

@@ -17,26 +17,59 @@ import type { StateEndpointResponse } from "./types.js";
 const worker = new Worker();
 export default worker;
 
-// Min interval between accepted taps. The webhook is the only trigger surface,
-// so this is the only spend cap. The Anthropic console cap ($30) is the backstop.
-const MIN_TAP_INTERVAL_MS = 3_000;
+// Min interval between accepted taps. Two NFC re-reads on a single ring touch
+// (iOS occasionally double-fires) can land within 2-3s, so the floor needs to
+// be wider than a comfortable human re-tap. 8s covers re-reads plus most user
+// "tap again I meant it" double-presses; the worker's normal turn cycle is
+// 5-15s anyway, so anything shorter than 8s is suspect.
+//
+// CAVEAT: lastTapAt / recentDeliveries are module-level state, which is only
+// shared within a warm Worker instance. Two truly-concurrent webhook
+// invocations from separate cold starts will both see lastTapAt=0 and both
+// process. The right fix for that is persisting last-tap-at to Notion (or a
+// KV store), but that costs an extra read per tap and hurts the rate-limit
+// budget we already bumped into. For now, accept the cold-start blind spot —
+// it's rare in practice and adds at most one extra turn.
+const MIN_TAP_INTERVAL_MS = 8_000;
 let lastTapAt = 0;
+
+// Idempotency dedupe by Notion's deliveryId. If the platform re-delivers the
+// same webhook event (retry on timeout, etc.), the deliveryId stays constant
+// and we skip rather than re-running the turn. Bounded to the last 32 IDs
+// because the Map preserves insertion order and we don't need history.
+const recentDeliveries = new Set<string>();
+const RECENT_DELIVERIES_MAX = 32;
 
 worker.webhook("tap", {
 	title: "Ring War — Tap",
 	description: "NFC tap entry point. Runs one game turn (Order → Shadow → Throne).",
 	execute: async (events, ctx) => {
+		const event = events[0];
+		const deliveryId = event?.deliveryId;
+
+		// Dedupe re-deliveries of the same event before the time-window check
+		// so a retry doesn't bump lastTapAt and lock out a legitimate next tap.
+		if (deliveryId && recentDeliveries.has(deliveryId)) {
+			console.log(`[tap] duplicate delivery=${deliveryId} — skipping`);
+			return;
+		}
+
 		const now = Date.now();
 		if (now - lastTapAt < MIN_TAP_INTERVAL_MS) {
-			console.log(`[tap] rate-limited: ${now - lastTapAt}ms since last tap`);
+			console.log(`[tap] rate-limited: ${now - lastTapAt}ms since last tap (delivery=${deliveryId ?? "?"})`);
 			return;
 		}
 		lastTapAt = now;
+		if (deliveryId) {
+			recentDeliveries.add(deliveryId);
+			if (recentDeliveries.size > RECENT_DELIVERIES_MAX) {
+				// Drop oldest. Set iteration is insertion-ordered in JS engines.
+				const oldest = recentDeliveries.values().next().value;
+				if (oldest !== undefined) recentDeliveries.delete(oldest);
+			}
+		}
 
-		// Process the first event only — the platform delivers one at a time today.
-		// We don't care about the request body; any tap kicks off a turn.
-		const event = events[0];
-		console.log(`[tap] received ${event?.method ?? "?"} delivery=${event?.deliveryId ?? "?"}`);
+		console.log(`[tap] received ${event?.method ?? "?"} delivery=${deliveryId ?? "?"}`);
 
 		try {
 			const result = await runTurn(ctx);

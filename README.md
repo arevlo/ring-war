@@ -27,7 +27,7 @@ flowchart TD
   Dedupe -->|duplicate| Skip1["Skip silently"]
 
   ReadState --> StatusCheck{"status == 'active'?"}
-  StatusCheck -->|no| Skip2["Skip (terminal or summoning lock)"]
+  StatusCheck -->|no| Skip2["Skip: terminal or summoning lock"]
   StatusCheck -->|yes| Mark["Write status='summoning' to Ring State<br/>(in-flight marker + soft lock)"]
 
   Mark --> Order["Claude call 1 — The Order<br/>(3 tools)"]
@@ -35,10 +35,10 @@ flowchart TD
   Shadow --> Throne["Claude call 3 — The Throne<br/>(no tools, strict JSON verdict)"]
   Throne --> Execute["Execute winner's tool against Notion"]
   Execute --> Recheck{"Recheck Ring State —<br/>turnNumber unchanged?"}
-  Recheck -->|moved (concurrent winner)| Restore["Restore status='active', skip write"]
+  Recheck -->|moved, concurrent winner| Restore["Restore status='active', skip write"]
   Recheck -->|unchanged| WriteTurn["Write Turn row +<br/>write new Ring State (status active/terminal)"]
   WriteTurn --> Check{"Terminal?"}
-  Check -->|destroyed / exfiltrated / turn≥10| Freeze["Freeze in terminal status"]
+  Check -->|terminal: destroyed, exfiltrated, or turn 10| Freeze["Freeze in terminal status"]
   Check -->|active| Return["Return 200"]
 
   Dashboard["Vercel dashboard"]

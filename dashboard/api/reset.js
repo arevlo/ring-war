@@ -168,11 +168,17 @@ export default async function handler(req, res) {
 		const turnsDS = await resolveDataSourceId(notion, TURNS_DB_ID);
 		const allTurns = await readAllTurns(notion, turnsDS);
 
-		// --- Snapshot to Games DB (Chronicles) ---
+		// --- Fan out all three write phases in parallel ---
+		// Snapshot, state-reset, and per-turn archive are independent: none
+		// reads the others' output. Awaiting them sequentially used to add
+		// 1–2s on top of the per-turn archive fan-out; running all three
+		// concurrently collapses the entire write side of "Begin again" to
+		// roughly the slowest single Notion round-trip. The client renderer
+		// already has a defensive filter (`turn <= state.turn`) that hides
+		// not-yet-archived rows once the state row reads back at turn=0,
+		// so the transient window where state is reset but turns are still
+		// archiving is invisible to the audience.
 		const snapshot = summarizeGame(stateRow, allTurns);
-		const snapshotResult = await snapshotToGamesDB(notion, snapshot);
-
-		// --- Reset Ring State row to defaults ---
 		const resetProps = {
 			Holder:        { select: { name: "free" } },
 			Integrity:     { number: 100 },
@@ -180,28 +186,51 @@ export default async function handler(req, res) {
 			"Turn number": { number: 0 },
 			Status:        { select: { name: "active" } },
 		};
-		if (stateRow) {
-			await notion.pages.update({ page_id: stateRow.id, properties: resetProps });
-		} else {
-			await notion.pages.create({
+		const snapshotPromise = snapshotToGamesDB(notion, snapshot);
+		const stateResetPromise = stateRow
+			? notion.pages.update({ page_id: stateRow.id, properties: resetProps })
+			: notion.pages.create({
 				parent: { database_id: RING_STATE_DB_ID },
 				properties: {
 					"Game ID": { title: [{ text: { content: "current" } }] },
 					...resetProps,
 				},
 			});
-		}
-
-		// --- Archive existing Turns ---
-		let archived = 0;
-		for (const row of allTurns) {
-			try {
-				await notion.pages.update({ page_id: row.id, archived: true });
-				archived++;
-			} catch (e) {
-				console.warn("[/api/reset] archive failed for", row.id, e);
+		// Chunked fan-out: Notion's public API caps at ~3 req/sec sustained.
+		// Unbounded Promise.all on 5–10 turn archives bursts well past that
+		// and trips a 429 that takes 1–2 minutes to clear (and stalls the
+		// worker mid-tap, which makes iOS Shortcuts back off the NFC ring).
+		// Chunks of 3 with a 350ms pace between chunks keeps us under the
+		// limit while preserving most of the parallel speedup.
+		const archivePromise = (async () => {
+			const out = [];
+			for (let i = 0; i < allTurns.length; i += 3) {
+				const batch = allTurns.slice(i, i + 3);
+				const settled = await Promise.allSettled(
+					batch.map((row) => notion.pages.update({ page_id: row.id, archived: true })),
+				);
+				out.push(...settled);
+				if (i + 3 < allTurns.length) {
+					await new Promise((r) => setTimeout(r, 350));
+				}
 			}
-		}
+			return out;
+		})();
+
+		const [snapshotResult, , archiveResults] = await Promise.all([
+			snapshotPromise,
+			stateResetPromise,
+			archivePromise,
+		]);
+
+		let archived = 0;
+		archiveResults.forEach((r, idx) => {
+			if (r.status === "fulfilled") {
+				archived++;
+			} else {
+				console.warn("[/api/reset] archive failed for", allTurns[idx].id, r.reason);
+			}
+		});
 
 		res.status(200).json({
 			ok: true,

@@ -403,7 +403,7 @@
 	/* ===== Header ===== */
 	.header {
 		display: grid;
-		grid-template-columns: 1fr auto auto auto;
+		grid-template-columns: 1fr auto auto auto auto;
 		align-items: center;
 		gap: 14px;
 		padding-bottom: 22px;
@@ -531,6 +531,30 @@
 	.mute-toggle[aria-pressed="false"] .ic-unmuted { display: inline; }
 	.mute-toggle[aria-pressed="true"]  .ic-muted   { display: inline; color: var(--mute); }
 	.mute-toggle[aria-pressed="true"]  .ic-unmuted { display: none; }
+
+	/* Reset button — sibling of mute-toggle, lets the operator wipe the
+	   current game from anywhere (vs waiting for the end-card to surface
+	   "Begin again"). Confirms before firing /api/reset so an accidental
+	   tap mid-tournament doesn't nuke the chronicle. */
+	.reset-btn {
+		appearance: none;
+		background: var(--surface);
+		color: var(--ink-soft);
+		border: 1px solid var(--rule);
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		cursor: pointer;
+		display: inline-grid;
+		place-items: center;
+		padding: 0;
+		transition: background 200ms ease, border-color 200ms ease, color 200ms ease, transform 320ms ease;
+	}
+	.reset-btn:hover { background: var(--surface-2); color: var(--amber); border-color: var(--rule-strong); }
+	.reset-btn:disabled { opacity: 0.5; cursor: progress; }
+	.reset-btn svg { width: 18px; height: 18px; }
+	.reset-btn.busy svg { animation: resetSpin 900ms linear infinite; }
+	@keyframes resetSpin { to { transform: rotate(360deg); } }
 
 	/* ===== Stats row ===== */
 	.stats {
@@ -1357,7 +1381,7 @@
 	.live-rail #live-list {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 10px;
 	}
 	.live-rail .live-heading .dot {
 		width: 7px; height: 7px; border-radius: 50%;
@@ -1521,7 +1545,7 @@
 
 	@media (max-width: 640px) {
 		.app { padding: 18px 14px 60px; }
-		.header { grid-template-columns: 1fr auto auto; }
+		.header { grid-template-columns: 1fr auto auto auto; }
 		.turn-count { display: none; }
 		.conn .conn-label { display: none; }
 		.conn { padding: 7px; }
@@ -1556,6 +1580,12 @@
 		<span class="conn" id="conn" data-state="awaiting" role="status" aria-live="polite" aria-atomic="true">
 			<span class="dot" aria-hidden="true"></span><span class="conn-label" id="conn-label">Awaiting</span>
 		</span>
+		<button class="reset-btn" id="reset-game" type="button" aria-label="Reset the war and start a new game" title="Reset the war">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M21 12a9 9 0 1 1-3.5-7.1"/>
+				<polyline points="21 4 21 10 15 10"/>
+			</svg>
+		</button>
 		<button class="mute-toggle" id="mute-toggle" type="button" aria-label="Mute audio" aria-pressed="false">
 			<svg class="ic-unmuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 				<path d="M11 5L6 9H3v6h3l5 4z"/>
@@ -1897,10 +1927,48 @@ function pushLiveCard(t, stream) {
 		</div>
 		<div class="lc-verdict" data-winner="${escapeHTML(winner)}">${escapeHTML(winnerLabel)}</div>
 	`;
+
+	// FLIP: snapshot the live cards that will be visually displaced by the
+	// prepend, so we can animate them down to their new positions instead of
+	// snapping. Cards already in `fading` state are excluded — they're on
+	// their way out and shouldn't drive the layout calculation.
+	const liveOnes = Array.from(els.liveList.children).filter(
+		(c) => !c.classList.contains("fading"),
+	);
+	const oldTops = liveOnes.map((el) => el.getBoundingClientRect().top);
+
 	els.liveList.prepend(card);
-	while (els.liveList.children.length > LIVE_RAIL_MAX) {
-		els.liveList.lastElementChild.remove();
+
+	// Overflow: fade old cards out instead of yanking them. Counting only
+	// non-fading cards keeps repeated overflows from re-firing on the same
+	// element while its 620ms fade-out is still resolving.
+	const stillLive = Array.from(els.liveList.children).filter(
+		(c) => !c.classList.contains("fading"),
+	);
+	const excess = stillLive.length - LIVE_RAIL_MAX;
+	for (let i = 0; i < excess; i++) {
+		const dying = stillLive[stillLive.length - 1 - i];
+		dying.classList.add("fading");
+		setTimeout(() => { if (dying.isConnected) dying.remove(); }, 600);
 	}
+
+	// FLIP step 2: read each surviving card's new top, compute the delta,
+	// instantly translate it back to where it was, then on the next frame
+	// drop the translate so the eased transition does the visible work.
+	requestAnimationFrame(() => {
+		liveOnes.forEach((el, i) => {
+			const newTop = el.getBoundingClientRect().top;
+			const delta = oldTops[i] - newTop;
+			if (!delta) return;
+			el.style.transition = "none";
+			el.style.transform = `translateY(${delta}px)`;
+			requestAnimationFrame(() => {
+				el.style.transition = "transform 460ms cubic-bezier(0.34, 1.06, 0.64, 1)";
+				el.style.transform = "translateY(0)";
+			});
+		});
+	});
+
 	// Each card has a TTL — chronicle below is the permanent record
 	const ttl = stream ? LIVE_CARD_TTL_MS : LIVE_CARD_TTL_MS * 1.6;  // seeded ones live a touch longer
 	setTimeout(() => {
@@ -1985,10 +2053,13 @@ function emitTurnVoices(t, state, opts) {
 	AUDIO.playTurn(picks, {
 		onBeat: (beat) => {
 			if (beat.kind === "order") {
+				setSummoningHint("Order considers its move…");
 				pushUtterance(picks.order.speaker, picks.order.meta, picks.order.text);
 			} else if (beat.kind === "shadow") {
+				setSummoningHint("Shadow weighs its strike…");
 				pushUtterance(picks.shadow.speaker, picks.shadow.meta, picks.shadow.text);
 			} else if (beat.kind === "throne") {
+				setSummoningHint("The Throne contemplates the verdict.");
 				pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
 			}
 		},
@@ -2028,32 +2099,33 @@ function startSummoning(source) {
 		els.liveList.prepend(card);
 		_placeholderEl = card;
 	}
-	// Step through the hint stages once and freeze on the last one until the
-	// verdict lands. 4 stages × 3.5s = 14s, which is the average worker turn
-	// (Order → Shadow → Throne Claude calls). Looping back to "The Ring stirs"
-	// in the middle of a real turn made the UI look like it was animating
-	// fake progress.
+	// Placeholder shows a single static line ("The Ring stirs.") with the
+	// pulsing-dots animation already in the card as the only "thinking"
+	// indicator. We used to cycle through HINT_STAGES on a 3.5s timer here,
+	// but that ran out of sync with the worker — by the time the verdict
+	// landed, the cycle had already rotated through Order → Shadow → Throne
+	// without any matching bottom-card content, then emitTurnVoices would
+	// rerun the same labels alongside the real reasoning. The audience saw
+	// two cycles: one fake, then the real one. Now there is only one.
 	stopSummoningHint();
-	let i = 0;
-	els.tapHint.textContent = HINT_STAGES[0];
 	const placeholderMsg0 = document.getElementById("lc-pending-msg");
 	if (placeholderMsg0) placeholderMsg0.textContent = HINT_STAGES[0];
-	_hintCycleTimer = setInterval(() => {
-		if (i >= HINT_STAGES.length - 1) {
-			clearInterval(_hintCycleTimer);
-			_hintCycleTimer = null;
-			return;
-		}
-		i++;
-		els.tapHint.textContent = HINT_STAGES[i];
-		const placeholderMsg = document.getElementById("lc-pending-msg");
-		if (placeholderMsg) placeholderMsg.textContent = HINT_STAGES[i];
-	}, 3500);
 }
 
 function stopSummoningHint() {
 	if (_hintCycleTimer) clearInterval(_hintCycleTimer);
 	_hintCycleTimer = null;
+}
+
+// setSummoningHint — push a phase label to the right-rail summoning
+// placeholder so the audience can read "what phase is this" on the right
+// while the bottom card carries the reasoning content. Intentionally does
+// NOT echo into the tap-hint line below the summon button — that line is
+// reserved for user-facing prompts ("The Ring waits.", "Turn ordered.")
+// and duplicating the phase label there made the UI feel redundant.
+function setSummoningHint(text) {
+	const msg = document.getElementById("lc-pending-msg");
+	if (msg) msg.textContent = text;
 }
 
 function clearSummoningPlaceholder() {
@@ -2088,11 +2160,13 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	if (_firstRender) {
 		// First render — DON'T seed historical turns into the rail. The rail
 		// is a "what just happened" ticker; the chronicle below is the archive.
-		// Just remember the top so future fresh-turn detection works, and
-		// fill the utterance cards with the most recent turn (no stagger).
+		// Pin the high-water mark so old turns don't re-emit as fresh,
+		// and leave the throne card on its idle line ("The Ring waits.")
+		// until the next live tap — replaying a stale verdict on page
+		// load reads as if a turn just happened.
 		_firstRender = false;
 		_highestTurnSeen = top;
-		emitTurnVoices(turnsSortedNewestFirst[0], state, { stagger: false });
+		setIdleUtterance(state);
 		return;
 	}
 
@@ -2110,20 +2184,15 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	}
 	if (fresh.length === 0) return;
 
-	// Real turn(s) arrived — clear any in-flight summoning placeholder + toast.
-	// Drop the "summoning" red glow now that we have a verdict to show.
-	clearSummoningPlaceholder();
+	// Real turn(s) arrived. Stop the auto-cycling hint but KEEP the
+	// summoning placeholder mounted — emitTurnVoices below will retarget
+	// its text per beat (Order considers → Shadow weighs → Throne
+	// contemplates) so the right-rail label stays in sync with the
+	// reasoning content unfolding in the bottom card. The placeholder, eye
+	// glow, and locked summon button all stay through the narration; we
+	// tear them down in onComplete once the Throne has spoken.
+	stopSummoningHint();
 	_isSummoning = false;
-	if (window.setEyeState && !terminal) window.setEyeState("idle");
-	// The verdict is in — re-enable the summon button so the user can
-	// advance to the next turn. Tap-handler intentionally left it disabled
-	// through the whole summoning window so a hyper user couldn't queue
-	// two turns at once.
-	if (!terminal) els.tapBtn.disabled = false;
-	els.tapHint.textContent = HINT_ORDERED;
-	for (const t of fresh.slice().reverse()) {
-		pushLiveCard(t, true);   // stream → staggered chip reveal
-	}
 	_lastTapSource = null;
 	_highestTurnSeen = top;
 
@@ -2141,6 +2210,16 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	emitTurnVoices(fresh[0], state, {
 		stagger: true,
 		onComplete: () => {
+			// Beats are done — drop the summoning placeholder, kill the
+			// red glow, re-enable the tap button, and push the verdict
+			// cards onto the live rail (the staggered chip reveals).
+			clearSummoningPlaceholder();
+			if (window.setEyeState && !terminal) window.setEyeState("idle");
+			if (!terminal) els.tapBtn.disabled = false;
+			els.tapHint.textContent = HINT_ORDERED;
+			for (const t of fresh.slice().reverse()) {
+				pushLiveCard(t, true);
+			}
 			if (isTerminal && !terminal) {
 				_pendingEnd = null;
 				showEnd(newStatus);
@@ -2264,8 +2343,11 @@ function render(payload) {
 		// Fresh game: there are no historical turns to suppress, so clear the
 		// first-render flag now. Otherwise the very first turn that arrives
 		// would still trip the "seed only" branch in handleNewTurns and skip
-		// its audio cue. (Intro audio is fired once at page boot — see the
-		// AUDIO.playIntro() call right after the AUDIO IIFE.)
+		// its audio cue. Also fire the intro line ("Let the war be witnessed")
+		// here, NOT at page boot — that way a mid-game refresh doesn't replay
+		// the opening over a war already in progress. AUDIO.playIntro's
+		// internal flag keeps it from re-firing on subsequent polls.
+		if (!isDemo) AUDIO.playIntro();
 		_firstRender = false;
 	}
 }
@@ -2407,6 +2489,26 @@ async function replay() {
 }
 const _replayBtn = document.getElementById("end-replay");
 if (_replayBtn) _replayBtn.addEventListener("click", replay);
+
+// Header-level reset — same /api/reset action as the end-card "Begin again"
+// button, but available mid-game. Confirm first so an accidental click
+// during a real demo doesn't blow away the chronicle. The spinning icon
+// (.busy) gives the operator feedback while the Notion writes settle.
+const _resetBtn = document.getElementById("reset-game");
+if (_resetBtn) {
+	_resetBtn.addEventListener("click", async () => {
+		if (_resetBtn.disabled) return;
+		if (!confirm("Reset the war and start a new game?")) return;
+		_resetBtn.disabled = true;
+		_resetBtn.classList.add("busy");
+		try {
+			await replay();
+		} finally {
+			_resetBtn.classList.remove("busy");
+			_resetBtn.disabled = false;
+		}
+	});
+}
 
 /* ===== Polling ===== */
 async function poll() {
@@ -2589,8 +2691,11 @@ const AUDIO = (() => {
 		const a = getAmbient();
 		// Already audibly playing — nothing to do.
 		if (!a.paused && ambientStarted && !a.muted) return;
-		// Already rolling muted — first gesture is here, just unmute.
+		// Already rolling muted — first gesture is here. Rewind to t=0 so
+		// the user hears the score from its opening, not wherever the
+		// muted-autoplay track had drifted to while the page sat idle.
 		if (!a.paused && ambientStarted && a.muted) {
+			try { a.currentTime = 0; } catch (_) {}
 			a.muted = false;
 			a.volume = AMBIENT_VOLUME_PLAYING;
 			return;
@@ -2613,10 +2718,32 @@ const AUDIO = (() => {
 			a.volume = AMBIENT_VOLUME_PLAYING;
 			await a.play();
 			ambientStarted = true;
+			// Arm a one-shot gesture listener so the operator's very first
+			// click (tap-to-summon, mute toggle, reset, anywhere) re-enters
+			// startAmbient and hits the "Already rolling muted" branch
+			// above, unmuting the score immediately. Previously this was
+			// only set up as a side-effect of playIntro's autoplay-block
+			// catch, so when the intro stopped firing at page boot the
+			// ambient would stay muted until something else triggered
+			// startAmbient (which could be several seconds in).
+			armAmbientUnmuteOnGesture();
 		} catch (e) {
 			// Both paths blocked (very strict policy). queueIntroOnInteraction
 			// will catch the next gesture and try again.
 		}
+	}
+	let _ambientGestureArmed = false;
+	function armAmbientUnmuteOnGesture() {
+		if (_ambientGestureArmed) return;
+		_ambientGestureArmed = true;
+		const fire = () => {
+			document.removeEventListener("pointerdown", fire);
+			document.removeEventListener("keydown", fire);
+			_ambientGestureArmed = false;
+			startAmbient();
+		};
+		document.addEventListener("pointerdown", fire, { once: true });
+		document.addEventListener("keydown", fire, { once: true });
 	}
 	function stopAmbient() {
 		if (ambient) {
@@ -2835,14 +2962,14 @@ els.muteToggle.addEventListener("click", () => {
 	if (next && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
 });
 
-// Try the intro once on page boot. If autoplay is allowed (sticky activation
-// from a prior tab interaction) it plays immediately; otherwise playIntro
-// arms a one-shot pointerdown/keydown listener so the first interaction with
-// the page — typically the Tap to Summon button — fires it. This is what
-// makes the intro survive page reloads mid-game: render() used to only call
-// it when turns.length === 0, so reloading after any turn meant no intro.
-// Same gesture is what starts the ambient loop (Mordor Aftermath).
-if (!isDemo) { AUDIO.playIntro(); AUDIO.startAmbient(); }
+// Start the ambient loop on page boot (Mordor Aftermath). The intro line —
+// "Let the war be witnessed" — is intentionally NOT fired here: refreshing
+// mid-game would replay the opening over a war already in progress, which
+// reads as "the game restarted" to the audience. Instead, render() fires it
+// when the first successful poll shows a truly fresh game (state.turn === 0
+// and no turns recorded). AUDIO.playIntro's internal `introPlayed` flag
+// keeps it from re-firing on subsequent polls of the same fresh game.
+if (!isDemo) AUDIO.startAmbient();
 
 /* ===== Chronicles panel — prior games archived by /api/reset ===== */
 (function initChronicles() {

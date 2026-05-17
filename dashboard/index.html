@@ -1967,16 +1967,27 @@ function startSummoning(source) {
 		els.liveList.prepend(card);
 		_placeholderEl = card;
 	}
-	// Cycle hint text in tap-hint AND the rail placeholder
+	// Step through the hint stages once and freeze on the last one until the
+	// verdict lands. 4 stages × 3.5s = 14s, which is the average worker turn
+	// (Order → Shadow → Throne Claude calls). Looping back to "The Ring stirs"
+	// in the middle of a real turn made the UI look like it was animating
+	// fake progress.
 	stopSummoningHint();
 	let i = 0;
 	els.tapHint.textContent = HINT_STAGES[0];
+	const placeholderMsg0 = document.getElementById("lc-pending-msg");
+	if (placeholderMsg0) placeholderMsg0.textContent = HINT_STAGES[0];
 	_hintCycleTimer = setInterval(() => {
-		i = (i + 1) % HINT_STAGES.length;
+		if (i >= HINT_STAGES.length - 1) {
+			clearInterval(_hintCycleTimer);
+			_hintCycleTimer = null;
+			return;
+		}
+		i++;
 		els.tapHint.textContent = HINT_STAGES[i];
 		const placeholderMsg = document.getElementById("lc-pending-msg");
 		if (placeholderMsg) placeholderMsg.textContent = HINT_STAGES[i];
-	}, 2400);
+	}, 3500);
 }
 
 function stopSummoningHint() {
@@ -1998,6 +2009,15 @@ function clearSummoningPlaceholder() {
 }
 
 function handleNewTurns(turnsSortedNewestFirst, state) {
+	// Rescue: if state.turn dropped below our high-water mark, a reset
+	// happened (possibly via the worker side, possibly via /api/reset where
+	// the archive timed out). Clear _highestTurnSeen so the new game's turns
+	// register as fresh instead of being filtered as "already seen."
+	const stateTurn = (state && typeof state.turn === "number") ? state.turn : null;
+	if (stateTurn !== null && stateTurn < _highestTurnSeen) {
+		_highestTurnSeen = -1;
+	}
+
 	if (!turnsSortedNewestFirst.length) {
 		setIdleUtterance(state);
 		return;
@@ -2107,7 +2127,14 @@ function escapeHTML(s) {
 /* ===== Render ===== */
 function render(payload) {
 	const state = (payload && payload.state) || {};
-	const turns = Array.isArray(payload && payload.turns) ? payload.turns : [];
+	const rawTurns = Array.isArray(payload && payload.turns) ? payload.turns : [];
+	// Defensive filter: Turns DB may carry stale rows from a previous game
+	// whose archive timed out on reset. state.turn is the authoritative turn
+	// counter for the current game — anything past it is a leftover. Without
+	// this guard, _highestTurnSeen latches onto a stale "5" and the dashboard
+	// silently ignores the actual new turn 1/2/3 of the fresh game.
+	const stateTurn = (typeof state.turn === "number") ? state.turn : Infinity;
+	const turns = rawTurns.filter((t) => (t && typeof t.turn === "number" ? t.turn : 0) <= stateTurn);
 
 	const holder = state.holder || "free";
 	els.holderPill.dataset.holder = holder;
@@ -2148,11 +2175,11 @@ function render(payload) {
 	const status = state.status || "active";
 	if (status !== "active" && TERMINAL_COPY[status]) showEnd(status);
 	else if (status === "active" && turns.length === 0) {
-		AUDIO.playIntro();
 		// Fresh game: there are no historical turns to suppress, so clear the
 		// first-render flag now. Otherwise the very first turn that arrives
 		// would still trip the "seed only" branch in handleNewTurns and skip
-		// its audio cue.
+		// its audio cue. (Intro audio is fired once at page boot — see the
+		// AUDIO.playIntro() call right after the AUDIO IIFE.)
 		_firstRender = false;
 	}
 }
@@ -2516,6 +2543,10 @@ const AUDIO = (() => {
 		const mySeq = ++seq;
 		stopAll();
 		const a = get("intro-throne.mp3");
+		// stopAll() resets currentTime via pause+0, but resetting explicitly
+		// makes this resilient if stopAll's body ever changes (e.g. someone
+		// strips the currentTime line). Matches the pattern in playOne.
+		try { a.currentTime = 0; } catch (_) {}
 		try {
 			await a.play();
 			// Don't await `ended` here — the duration timer in playOne would,
@@ -2546,6 +2577,14 @@ els.voice.addEventListener("change", (e) => {
 	// Toggling ON for a fresh game (no turns rendered yet) should still get the intro.
 	if (e.target.checked && _firstRender === false && _highestTurnSeen <= 0) AUDIO.playIntro();
 });
+
+// Try the intro once on page boot. If autoplay is allowed (sticky activation
+// from a prior tab interaction) it plays immediately; otherwise playIntro
+// arms a one-shot pointerdown/keydown listener so the first interaction with
+// the page — typically the Tap to Summon button — fires it. This is what
+// makes the intro survive page reloads mid-game: render() used to only call
+// it when turns.length === 0, so reloading after any turn meant no intro.
+if (!isDemo) AUDIO.playIntro();
 
 /* ===== Chronicles panel — prior games archived by /api/reset ===== */
 (function initChronicles() {

@@ -1842,6 +1842,12 @@ function moveLabel(side) {
 /* ===== Live-rail / toast machinery ===== */
 let _highestTurnSeen = -1;        // -1 = never rendered; 0+ = highest turn # already displayed
 let _firstRender = true;
+// When a fresh turn ends the war, handleNewTurns sets this to the terminal
+// status string (e.g. "destroyed"). render() then skips its synchronous
+// showEnd call so the narrative beats (Order → Shadow → Throne + audio) can
+// play out first; emitTurnVoices's onComplete clears the flag and triggers
+// showEnd cinematically. Stays null at all other times.
+let _pendingEnd = null;
 const LIVE_RAIL_MAX = 3;
 const LIVE_CARD_TTL_MS = 35000;   // each rail card fades out after ~35s
 
@@ -1934,12 +1940,17 @@ function pickTurnNarrative(turn, state) {
 // emitTurnVoices runs the three-beat narrative cycle:
 //   Order's reasoning (silent) → Shadow's reasoning (silent) → Throne verdict (audio).
 // Only the Throne beat plays audio — the user asked for one voice per round.
+// opts.onComplete (optional) fires once the full sequence finishes (after
+// throne audio ends, or after the silent-throne hold elapses). Used by
+// handleNewTurns to gate the terminal end-card until the narrative is done.
 function emitTurnVoices(t, state, opts) {
 	const stagger = (opts && opts.stagger !== false);
+	const onComplete = opts && opts.onComplete;
 	const picks = pickTurnNarrative(t, state);
 	if (!stagger) {
 		// First-render of a pre-existing game: jump straight to the verdict.
 		pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
+		if (onComplete) onComplete();
 		return;
 	}
 	AUDIO.playTurn(picks, {
@@ -1952,6 +1963,7 @@ function emitTurnVoices(t, state, opts) {
 				pushUtterance(picks.throne.speaker, picks.throne.meta, picks.throne.text);
 			}
 		},
+		onComplete: onComplete || (() => {}),
 	});
 }
 
@@ -2080,9 +2092,27 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 	}
 	_lastTapSource = null;
 	_highestTurnSeen = top;
-	// emitTurnVoices owns both the on-screen cycle and audio playback so
-	// the spoken clip and the visible line always start together.
-	emitTurnVoices(fresh[0], state, { stagger: true });
+
+	// If this fresh turn ended the war, suppress render()'s immediate
+	// showEnd call (see the `_pendingEnd` guard there) and queue the
+	// end-card to fire ONLY after the Order/Shadow beats and the Throne
+	// audio have finished. This keeps the verdict cinematic — you hear
+	// the Throne speak the last line, then the orb climaxes, then the
+	// end-card lands. Without this, the end-card flashed up the moment
+	// the terminal poll arrived, hiding the narrative we worked to show.
+	const newStatus = (state && state.status) || "active";
+	const isTerminal = newStatus !== "active" && TERMINAL_COPY[newStatus];
+	if (isTerminal) _pendingEnd = newStatus;
+
+	emitTurnVoices(fresh[0], state, {
+		stagger: true,
+		onComplete: () => {
+			if (isTerminal && !terminal) {
+				_pendingEnd = null;
+				showEnd(newStatus);
+			}
+		},
+	});
 }
 
 /* ===== Connection state ===== */
@@ -2193,7 +2223,11 @@ function render(payload) {
 	els.persona.textContent = throneMurmur(latest, state);
 
 	const status = state.status || "active";
-	if (status !== "active" && TERMINAL_COPY[status]) showEnd(status);
+	// _pendingEnd: handleNewTurns set this if a fresh terminal turn is
+	// currently being narrated. Hold off on the end-card until that
+	// onComplete fires so the audience sees Order → Shadow → Throne + hears
+	// the verdict speak before the war's ending headline appears.
+	if (status !== "active" && TERMINAL_COPY[status] && !_pendingEnd) showEnd(status);
 	else if (status === "active" && turns.length === 0) {
 		// Fresh game: there are no historical turns to suppress, so clear the
 		// first-render flag now. Otherwise the very first turn that arrives
@@ -2308,6 +2342,7 @@ async function replay() {
 		if (!r.ok) throw new Error("reset http " + r.status);
 		// Local reset — restore the dashboard to a fresh-game state
 		terminal = false;
+		_pendingEnd = null;
 		_highestTurnSeen = -1;
 		_firstRender = true;
 		lastSig = "";
@@ -2527,10 +2562,15 @@ const AUDIO = (() => {
 	//
 	// picks = { order: {speaker,meta,text}, shadow: {speaker,meta,text},
 	//           throne: {file,speaker,text,meta} }
-	// opts  = { onBeat: ({kind:"order"|"shadow"|"throne", clip}) => void }
+	// opts  = {
+	//   onBeat:     ({kind:"order"|"shadow"|"throne", clip}) => void,
+	//   onComplete: () => void   // fires after throne finishes (or hold ends),
+	//                            // but ONLY if this play wasn't cancelled.
+	// }
 	function playTurn(picks, opts) {
 		if (!picks) return;
 		const onBeat = (opts && opts.onBeat) || (() => {});
+		const onComplete = (opts && opts.onComplete) || (() => {});
 		const mySeq = ++seq;
 		// Hard-stop anything currently playing. This kills the intro, prior
 		// turn audio, or any leftovers from a previous chain.
@@ -2555,6 +2595,9 @@ const AUDIO = (() => {
 			} else {
 				await new Promise((r) => setTimeout(r, SILENT_BEAT_MS));
 			}
+			if (mySeq !== seq) return;
+			// Throne audio (or silent hold) done — narrative sequence complete.
+			onComplete();
 		})();
 	}
 	function queueIntroOnInteraction() {

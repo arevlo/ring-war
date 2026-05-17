@@ -2081,6 +2081,35 @@ const HINT_STAGES = [
 	"The Throne contemplates the verdict.",
 ];
 
+// enterRemoteSummoning — light up the summoning UI for a tap we didn't fire
+// from the local button (i.e. NFC ring or curl against the worker). Mirrors
+// the visible side-effects of the tap-button click handler: red eye flash
+// → sustained summoning glow, locked summon button, summoning placeholder
+// card on the right rail. No network call — the worker is already in flight.
+// Returns early if we're already showing summoning (button just fired, or a
+// prior remote tap is still narrating).
+function enterRemoteSummoning(source) {
+	if (_isSummoning || terminal) return;
+	_isSummoning = true;
+	if (!terminal) {
+		els.tapBtn.disabled = true;
+		els.tapBtn.classList.add("tapping");
+		els.tapHint.textContent = HINT_ANSWER;
+	}
+	if (window.setEyeState) window.setEyeState("triggered");
+	startSummoning(source || "Ring tap");
+	// Same triggered → summoning handoff the local tap handler uses: the
+	// sharp red flash lasts ~1.1s, then we settle into the breathing
+	// summoning glow that holds through the worker's Order→Shadow→Throne
+	// window. handleNewTurns clears it when the verdict arrives.
+	setTimeout(() => {
+		els.tapBtn.classList.remove("tapping");
+		if (!terminal && window.setEyeState) {
+			window.setEyeState(_isSummoning ? "summoning" : "idle");
+		}
+	}, 1100);
+}
+
 function startSummoning(source) {
 	_lastTapSource = source;
 	// Placeholder card in the rail
@@ -2211,14 +2240,21 @@ function handleNewTurns(turnsSortedNewestFirst, state) {
 		stagger: true,
 		onComplete: () => {
 			// Beats are done — drop the summoning placeholder, kill the
-			// red glow, re-enable the tap button, and push the verdict
-			// cards onto the live rail (the staggered chip reveals).
+			// red glow, re-enable the tap button, push the verdict cards
+			// onto the live rail (the staggered chip reveals), and now
+			// finally apply the deferred state panel snapshot so the bars,
+			// holder pill, and turn counter all flip to the new numbers in
+			// time with the Throne speaking the verdict.
 			clearSummoningPlaceholder();
 			if (window.setEyeState && !terminal) window.setEyeState("idle");
 			if (!terminal) els.tapBtn.disabled = false;
 			els.tapHint.textContent = HINT_ORDERED;
 			for (const t of fresh.slice().reverse()) {
 				pushLiveCard(t, true);
+			}
+			if (_pendingStateSnapshot) {
+				applyStatePanel(_pendingStateSnapshot);
+				_pendingStateSnapshot = null;
 			}
 			if (isTerminal && !terminal) {
 				_pendingEnd = null;
@@ -2286,6 +2322,34 @@ function escapeHTML(s) {
 }
 
 /* ===== Render ===== */
+// applyStatePanel — pushes the state snapshot (holder pill, integrity bar,
+// secrecy bar, turn counter) to the DOM. Extracted so render() can SKIP this
+// when a new turn is about to be narrated — the bars/pill/counter should
+// hold the prior values while Order → Shadow → Throne plays out, and only
+// flip to the new numbers once the Throne has spoken. handleNewTurns's
+// onComplete is responsible for calling this with the deferred snapshot.
+function applyStatePanel(s) {
+	const holder = s.holder || "free";
+	els.holderPill.dataset.holder = holder;
+	els.holderLabel.textContent = HOLDER_LABEL[holder] || "FREE";
+
+	const integrity = clamp(Number(s.integrity ?? 0), 0, 100);
+	const secrecy   = clamp(Number(s.secrecy   ?? 0), 0, 100);
+	els.integrityVal.textContent = integrity;
+	els.integrityFill.style.width = integrity + "%";
+	els.integrityMeter.setAttribute("aria-valuenow", String(integrity));
+	els.secrecyVal.textContent = secrecy;
+	els.secrecyFill.style.width = secrecy + "%";
+	els.secrecyMeter.setAttribute("aria-valuenow", String(secrecy));
+
+	els.turnNum.textContent = s.turn != null ? s.turn : "—";
+}
+
+// Snapshot we hold back when a new turn is mid-narration. handleNewTurns
+// stores the incoming state here when it kicks off emitTurnVoices, and
+// applies it via applyStatePanel from the throne's onComplete.
+let _pendingStateSnapshot = null;
+
 function render(payload) {
 	const state = (payload && payload.state) || {};
 	const rawTurns = Array.isArray(payload && payload.turns) ? payload.turns : [];
@@ -2297,20 +2361,40 @@ function render(payload) {
 	const stateTurn = (typeof state.turn === "number") ? state.turn : Infinity;
 	const turns = rawTurns.filter((t) => (t && typeof t.turn === "number" ? t.turn : 0) <= stateTurn);
 
-	const holder = state.holder || "free";
-	els.holderPill.dataset.holder = holder;
-	els.holderLabel.textContent = HOLDER_LABEL[holder] || "FREE";
+	// Will this poll trigger a new-turn narration? If yes, defer the panel
+	// update (bars, pill, turn counter) so the audience watches the prior
+	// numbers hold while Order → Shadow → Throne plays out. The new
+	// numbers land at the same moment the Throne speaks. First render and
+	// "no turns yet" polls bypass the deferral because there's no narration
+	// to wait on. Subsequent polls during the narration window also defer
+	// (handleNewTurns has already bumped _highestTurnSeen, so willNarrate
+	// would flip false, but the existing pending snapshot tells us a
+	// narration is mid-flight — keep holding the panel and refresh the
+	// snapshot to the latest state).
+	const currentTurn = (typeof state.turn === "number") ? state.turn : 0;
+	const willNarrate = !_firstRender && currentTurn > _highestTurnSeen && turns.length > 0;
+	if (willNarrate || _pendingStateSnapshot) {
+		_pendingStateSnapshot = {
+			holder: state.holder,
+			integrity: state.integrity,
+			secrecy: state.secrecy,
+			turn: state.turn,
+		};
+	} else {
+		applyStatePanel(state);
+	}
 
-	const integrity = clamp(Number(state.integrity ?? 0), 0, 100);
-	const secrecy   = clamp(Number(state.secrecy   ?? 0), 0, 100);
-	els.integrityVal.textContent = integrity;
-	els.integrityFill.style.width = integrity + "%";
-	els.integrityMeter.setAttribute("aria-valuenow", String(integrity));
-	els.secrecyVal.textContent = secrecy;
-	els.secrecyFill.style.width = secrecy + "%";
-	els.secrecyMeter.setAttribute("aria-valuenow", String(secrecy));
-
-	els.turnNum.textContent = state.turn != null ? state.turn : "—";
+	// Remote-tap detection. The worker writes status="summoning" to Ring
+	// State at the very start of every tap. Select property values
+	// propagate immediately via /api/state polling (unlike Notion's
+	// minute-bucketed last_edited_time), so this branch lights up the
+	// same red-eye + locked summon button + placeholder card UI as a
+	// local button click does — within ~2s of any NFC / curl / external
+	// tap landing at the worker. handleNewTurns clears the state when
+	// the actual turn row arrives at the end of the worker's window.
+	if ((state.status || "active") === "summoning" && !_isSummoning && !terminal) {
+		enterRemoteSummoning("Ring tap");
+	}
 
 	if (turns.length === 0) {
 		els.feed.innerHTML = "";
@@ -2465,6 +2549,7 @@ async function replay() {
 		_pendingEnd = null;
 		_highestTurnSeen = -1;
 		_firstRender = true;
+		_pendingStateSnapshot = null;
 		lastSig = "";
 		AUDIO.resetForReplay();
 		resetThroneAltMemory();

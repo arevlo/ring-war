@@ -2814,14 +2814,16 @@ if (canvas) {
 		const targetIntensity = triggered ? 0.95 : (eyeState === "stalemate" ? 0.7 : 1.55);
 		haloUniforms.uIntensity.value += (targetIntensity - haloUniforms.uIntensity.value) * haloEase;
 
-		// Lightning: only visible on triggered. Burst manager handles strike
-		// timing + screen flash; per-frame we just drive each bolt's lifetime
-		// envelope so strands fade out cleanly between strikes.
+		// Lightning + screen flash only fire during the final unmaking moment
+		// (the .climax-rage shake that plays when the Ring is destroyed).
+		// Normal "triggered" turn-processing keeps the red orb but no bolts.
+		const unmaking = canvas.parentElement &&
+			canvas.parentElement.classList.contains("climax-rage");
 		const wasVisible = lightningGroup.visible;
-		lightningGroup.visible = triggered && !reducedMotion;
+		lightningGroup.visible = unmaking && !reducedMotion;
 		if (lightningGroup.visible) {
 			if (!wasVisible) {
-				// Just entered triggered state — fire the first strike now
+				// Just entered the unmaking — fire the first strike now
 				// instead of waiting for the burst pause to elapse.
 				strikesLeft = 3;
 				nextStrikeAt = now;
